@@ -22,6 +22,7 @@
     addBoothBtn: document.getElementById('addBoothBtn'),
     settingEventTitle: document.getElementById('settingEventTitle'),
     settingPrizeDesc: document.getElementById('settingPrizeDesc'),
+    settingRequiredStamps: document.getElementById('settingRequiredStamps'),
     settingCooldown: document.getElementById('settingCooldown'),
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
     settingsSavedMsg: document.getElementById('settingsSavedMsg'),
@@ -71,6 +72,9 @@
 
     els.settingEventTitle.value = data.settings.event_title || '';
     els.settingPrizeDesc.value = data.settings.prize_description || '';
+    if (els.settingRequiredStamps) {
+      els.settingRequiredStamps.value = data.settings.required_stamps ?? 3;
+    }
     els.settingCooldown.value = data.settings.cooldown_seconds ?? 60;
 
     // Render Booths
@@ -159,7 +163,7 @@
         <td><strong>${escapeHtml(p.display_name)}</strong></td>
         <td>${escapeHtml(p.grade_level || '-')}</td>
         <td>${escapeHtml(p.school_name || '-')}</td>
-        <td><strong>${Number(p.stamped_count) || 0} / ${Number(p.total_active_booths) || 0}</strong> ฐาน</td>
+        <td><strong>${Number(p.stamped_count) || 0} / ${Number(p.required_stamps) || 3}</strong> ฐาน <span style="font-size:11px;color:#64748b;">(จาก ${Number(p.total_active_booths) || 0})</span></td>
         <td>${statusBadge}</td>
         <td>
           <button class="small-btn toggle-redeem-btn">
@@ -220,6 +224,7 @@
       body: JSON.stringify({
         event_title: els.settingEventTitle.value.trim(),
         prize_description: els.settingPrizeDesc.value.trim(),
+        required_stamps: Math.max(1, Number(els.settingRequiredStamps ? els.settingRequiredStamps.value : 3) || 3),
         cooldown_seconds: Number(els.settingCooldown.value) || 0
       })
     });

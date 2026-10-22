@@ -38,7 +38,8 @@ const DEFAULT_SETTINGS = {
   event_title: 'KMUTNB Techno Park Open House',
   event_subtitle: 'อุทยานเทคโนโลยี มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ',
   cooldown_seconds: '60',
-  prize_description: 'สะสมแสตมป์ครบทุกฐาน รับของที่ระลึกสุดพิเศษที่จุดลงทะเบียน!'
+  required_stamps: '3',
+  prize_description: 'เลือกสแกนสะสมแสตมป์ครบ 3 ฐาน รับของที่ระลึกสุดพิเศษที่จุดลงทะเบียน!'
 };
 
 function createError(code, message, extra = {}) {
@@ -134,6 +135,7 @@ function createDb(dbPath = ':memory:') {
       result[r.key] = r.value;
     }
     result.cooldown_seconds = Number(result.cooldown_seconds) || 0;
+    result.required_stamps = Math.max(1, Number(result.required_stamps) || 3);
     return result;
   }
 
@@ -255,18 +257,21 @@ function createDb(dbPath = ':memory:') {
 
     const stampedCount = boothsWithStatus.filter((b) => b.stamped).length;
     const totalBooths = boothsWithStatus.length;
-    const isCompleted = totalBooths > 0 && stampedCount >= totalBooths;
+    const settings = getSettings();
+    const requiredStamps = totalBooths > 0 ? Math.min(Number(settings.required_stamps) || 3, totalBooths) : 0;
+    const isCompleted = requiredStamps > 0 && stampedCount >= requiredStamps;
     const hasProfile = Boolean(participant.grade_level && participant.school_name);
 
     return {
       participant,
       booths: boothsWithStatus,
       stampedCount,
+      requiredStamps,
       totalBooths,
       isCompleted,
       hasProfile,
       isRedeemed: Boolean(participant.is_redeemed),
-      settings: getSettings()
+      settings
     };
   }
 
@@ -387,6 +392,10 @@ function createDb(dbPath = ':memory:') {
     const allBooths = listBooths({ activeOnly: false });
     const activeBooths = allBooths.filter((b) => b.is_active === 1);
     const activeBoothIds = new Set(activeBooths.map((b) => Number(b.id)));
+    const settings = getSettings();
+    const requiredStamps = activeBooths.length > 0
+      ? Math.min(Number(settings.required_stamps) || 3, activeBooths.length)
+      : 0;
 
     const stampCounts = db.prepare(`
       SELECT booth_id, COUNT(*) AS scan_count
@@ -416,10 +425,11 @@ function createDb(dbPath = ':memory:') {
     const enrichedParticipants = participants.map((p) => {
       const userStamps = stampsByUser.get(p.line_user_id) || [];
       const activeScannedCount = userStamps.filter((s) => activeBoothIds.has(Number(s.booth_id))).length;
-      const isCompleted = activeBooths.length > 0 && activeScannedCount >= activeBooths.length;
+      const isCompleted = requiredStamps > 0 && activeScannedCount >= requiredStamps;
       return {
         ...p,
         stamped_count: activeScannedCount,
+        required_stamps: requiredStamps,
         total_active_booths: activeBooths.length,
         is_completed: isCompleted,
         stamps: userStamps
@@ -430,14 +440,15 @@ function createDb(dbPath = ':memory:') {
       totalParticipants: enrichedParticipants.length,
       completedCount: enrichedParticipants.filter((p) => p.is_completed).length,
       redeemedCount: enrichedParticipants.filter((p) => p.is_redeemed === 1).length,
-      activeBoothCount: activeBooths.length
+      activeBoothCount: activeBooths.length,
+      requiredStamps
     };
 
     return {
       stats,
       booths: boothsWithStats,
       participants: enrichedParticipants,
-      settings: getSettings()
+      settings
     };
   }
 
@@ -466,7 +477,7 @@ function createDb(dbPath = ':memory:') {
         p.display_name,
         p.grade_level || '',
         p.school_name || '',
-        `${p.stamped_count}/${p.total_active_booths}`,
+        `${p.stamped_count}/${p.required_stamps}`,
         p.is_completed ? 'ครบแล้ว' : 'ยังไม่ครบ',
         p.is_redeemed ? 'รับรางวัลแล้ว' : 'ยังไม่ได้รับ',
         p.redeemed_at || '',

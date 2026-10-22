@@ -159,14 +159,15 @@
       els.userAvatar.textContent = (p.display_name || 'นร').slice(0, 2);
     }
 
+    const reqStamps = state.requiredStamps || 3;
     if (p.grade_level && p.school_name) {
       els.userSchoolStatus.textContent = `${p.grade_level} • ${p.school_name}`;
     } else {
-      els.userSchoolStatus.textContent = `สะสมให้ครบ ${state.totalBooths} ฐานเพื่อแลกของรางวัล`;
+      els.userSchoolStatus.textContent = `เลือกสแกนให้ครบ ${reqStamps} ฐาน (จากทั้งหมด ${state.totalBooths} ฐาน) เพื่อแลกรางวัล`;
     }
 
-    els.progressText.textContent = `${state.stampedCount} / ${state.totalBooths} ฐาน`;
-    const pct = state.totalBooths > 0 ? Math.min(100, Math.round((state.stampedCount / state.totalBooths) * 100)) : 0;
+    els.progressText.textContent = `${state.stampedCount} / ${reqStamps} ฐาน`;
+    const pct = reqStamps > 0 ? Math.min(100, Math.round((state.stampedCount / reqStamps) * 100)) : 0;
     els.progressBarFill.style.width = `${pct}%`;
 
     // Render Stamp Cards
