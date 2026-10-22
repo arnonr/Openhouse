@@ -8,9 +8,9 @@ services:
     environment:
       - PORT=3100
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-technopark2026}
-      - LIFF_ID=${LIFF_ID:-}
+      - LIFF_ID=${LIFF_ID:-2012153981-eWRVDFrg}
       - LINE_OA_ID=${LINE_OA_ID:-@096ilctj}
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://it.technopark.kmutnb.ac.th/openhouse}
       - DB_PATH=/app/data/openhouse.db
     volumes:
       - ./data:/app/data
