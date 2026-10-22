@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>สะสมแสตมป์ Open House | อุทยานเทคโนโลยี มจพ.</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="mobile-container">
+    <!-- Hero Header -->
+    <header class="hero-header">
+      <div class="org-badge">KMUTNB TECHNO PARK • อุทยานเทคโนโลยี มจพ.</div>
+      <h1 class="hero-title" id="eventTitle">KMUTNB Techno Park Open House</h1>
+      <p class="hero-subtitle" id="eventSubtitle">เดินชมฐานกิจกรรม สแกน QR Code สะสมแสตมป์แลกรับของรางวัล</p>
+    </header>
+
+    <!-- Participant Profile & Progress Card -->
+    <section class="card user-card">
+      <div class="user-row">
+        <div class="user-info">
+          <div class="avatar" id="userAvatar">นร</div>
+          <div>
+            <div style="font-weight: 700; font-size: 15px;" id="userName">กำลังโหลดข้อมูล...</div>
+            <div style="font-size: 12px; color: #64748b;" id="userSchoolStatus">สะสมแสตมป์ให้ครบทุกฐานเพื่อรับรางวัล</div>
+          </div>
+        </div>
+        <a id="lineOaLink" href="https://line.me/R/ti/p/@096ilctj" target="_blank" rel="noopener" style="font-size: 11px; background: #ecfdf5; color: #059669; border: 1px solid #10b981; padding: 5px 10px; border-radius: 99px; text-decoration: none; font-weight: 700;">
+          + เพื่อน LINE OA
+        </a>
+      </div>
+
+      <div class="progress-box">
+        <div class="progress-labels">
+          <span>ความคืบหน้าการเข้าฐาน</span>
+          <span id="progressText" style="color: #06c755;">0 / 4 ฐาน</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notification Banner -->
+    <div id="toastBanner" class="toast-banner"></div>
+
+    <!-- Step 2 & 3 Card: Profile Form or Redemption Card (Shown when all booths stamped) -->
+    <section id="completionSection" class="card" style="display: none; border: 2px solid #2563eb;">
+      <!-- Subview A: Short 2-Field Profile Form -->
+      <div id="profileFormView" style="display: none;">
+        <div style="text-align: center; margin-bottom: 14px;">
+          <div style="font-size: 34px;">🎉</div>
+          <h2 style="margin: 4px 0; font-size: 18px;">สะสมแสตมป์ครบทุกฐานแล้ว!</h2>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">กรอกข้อมูลสั้นๆ เพียง 2 ข้อเพื่อเปิดหน้าแลกรับของรางวัล</p>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">1. ระดับชั้นของคุณ (จิ้มเลือก)</label>
+          <div class="grade-grid" id="gradeOptions">
+            <div class="grade-chip" data-grade="ม.ต้น">ม.ต้น</div>
+            <div class="grade-chip active" data-grade="ม.ปลาย">ม.ปลาย</div>
+            <div class="grade-chip" data-grade="ปวช. / ปวส.">ปวช. / ปวส.</div>
+            <div class="grade-chip" data-grade="นักศึกษา / อื่นๆ">นักศึกษา / อื่นๆ</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label for="schoolInput" style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">2. ชื่อโรงเรียน / สถาบัน</label>
+          <input id="schoolInput" type="text" class="text-input" placeholder="เช่น รร.เตรียมวิศวกรรมศาสตร์ มจพ." />
+        </div>
+
+        <button id="saveProfileBtn" class="btn btn-primary">🎁 บันทึกและไปหน้าแลกของรางวัล</button>
+      </div>
+
+      <!-- Subview B: Ready to Redeem in front of Staff -->
+      <div id="redeemReadyView" style="display: none; text-align: center;">
+        <div style="font-size: 11px; font-weight: 800; color: #d97706; letter-spacing: 0.5px;">KMUTNB TECHNO PARK OPEN HOUSE</div>
+        <h2 style="margin: 6px 0 4px; font-size: 20px;">สิทธิ์แลกรับของรางวัล</h2>
+        <div id="redeemUserInfo" style="font-size: 13px; color: #475569; margin-bottom: 8px;"></div>
+
+        <div class="live-clock-box">
+          <span class="pulse-dot"></span>เวลาปัจจุบัน: <span id="liveClock">--:--:--</span>
+        </div>
+
+        <button id="confirmRedeemBtn" class="btn btn-amber">
+          👆 กดปุ่มนี้ต่อหน้าสตาฟเพื่อรับของรางวัล
+        </button>
+        <p style="font-size: 11px; color: #dc2626; margin: 8px 0 0;">
+          *กรุณากดเมื่ออยู่ต่อหน้าเจ้าหน้าที่จุดแลกของรางวัลเท่านั้น
+        </p>
+      </div>
+
+      <!-- Subview C: Already Redeemed -->
+      <div id="redeemedDoneView" style="display: none; text-align: center;">
+        <div style="font-size: 38px;">✅</div>
+        <h2 style="margin: 6px 0 4px; font-size: 19px; color: #059669;">รับของรางวัลเรียบร้อยแล้ว</h2>
+        <div id="redeemedTimeText" style="font-size: 12px; color: #64748b;">ขอบคุณที่มาร่วมสนุกกับอุทยานเทคโนโลยี มจพ.</div>
+      </div>
+    </section>
+
+    <!-- Stamp Grid -->
+    <div id="stampGrid" class="stamp-grid"></div>
+
+    <!-- Action Buttons -->
+    <div style="padding: 0 16px;">
+      <button id="openScannerBtn" class="btn btn-dark">📷 สแกน QR Code ประจำฐาน</button>
+    </div>
+
+    <!-- Demo / Test Mode Toolbar (Shown automatically when LIFF_ID is not set or ?demo=1) -->
+    <div id="demoToolbar" class="demo-toolbar" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong>🧪 โหมดจำลองทดสอบ (Demo Mode)</strong>
+        <a href="/admin" style="color: #38bdf8; font-size: 12px; text-decoration: none; font-weight: 700;">ไปหน้า Admin ⚙️</a>
+      </div>
+      <div style="color: #94a3b8; margin-top: 4px;">จำลองการเดินไปสแกนป้าย QR แต่ละฐานได้ทันทีโดยไม่ต้องใช้กล้อง:</div>
+      <div id="demoBoothButtons" class="demo-btn-row"></div>
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <button id="demoNewUserBtn" class="demo-btn" style="background: #0f766e;">🔄 สลับเป็นนักเรียนคนใหม่</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera & Manual Code Scanner Modal -->
+  <div id="scannerModal" class="modal-backdrop">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 17px;">📷 สแกน QR Code ประจำฐาน</h3>
+        <button id="closeScannerBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div id="qrReader" style="width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 12px;"></div>
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 6px;">หรือกรอกรหัสประจำฐาน (กรณีกล้องไม่ทำงาน):</label>
+        <div style="display: flex; gap: 8px;">
+          <input id="manualCodeInput" type="text" class="text-input" placeholder="เช่น ST-01-ROBOT" />
+          <button id="manualCodeSubmitBtn" class="btn btn-line" style="width: auto; white-space: nowrap;">ยืนยัน</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Redemption Confirmation Modal -->
+  <div id="redeemConfirmModal" class="modal-backdrop">
+    <div class="modal-content" style="text-align: center;">
+      <div style="font-size: 36px; margin-bottom: 6px;">🎁</div>
+      <h3 style="margin: 0 0 8px; font-size: 18px;">ยืนยันการแลกรับของรางวัล?</h3>
+      <p style="font-size: 13px; color: #475569; margin: 0 0 16px;">
+        กรุณากดยืนยันเมื่อคุณอยู่ต่อหน้าเจ้าหน้าที่จุดแลกของรางวัลแล้วเท่านั้น เมื่อกดแล้วสถานะจะเปลี่ยนเป็น <strong>"รับของรางวัลแล้ว"</strong> ทันที
+      </p>
+      <div style="display: flex; gap: 10px;">
+        <button id="cancelRedeemModalBtn" class="btn btn-outline">ยกเลิก</button>
+        <button id="proceedRedeemModalBtn" class="btn btn-amber">ยืนยันรับรางวัล</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

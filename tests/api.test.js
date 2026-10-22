@@ -103,3 +103,19 @@ test('Student API workflow, cooldown 429, validation 400, and Admin auth protect
     server.close();
   }
 });
+
+test('Serves Student Stamp Rally HTML page at /', async () => {
+  const store = createDb(':memory:');
+  const app = createApp(store);
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const homeRes = await fetch(`${baseUrl}/`);
+    assert.equal(homeRes.status, 200);
+    const html = await homeRes.text();
+    assert.ok(html.includes('อุทยานเทคโนโลยี มจพ.'));
+  } finally {
+    server.close();
+  }
+});
+
