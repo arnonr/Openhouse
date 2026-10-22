@@ -1,4 +1,5 @@
 (function () {
+  const BASE_PATH = window.location.pathname.startsWith('/openhouse') ? '/openhouse' : '';
   let currentUser = {
     lineUserId: '',
     displayName: '',
@@ -94,7 +95,7 @@
   }
 
   async function initIdentity() {
-    const cfgRes = await fetch('/api/config');
+    const cfgRes = await fetch(`${BASE_PATH}/api/config`);
     appConfig = await cfgRes.json();
 
     if (appConfig.lineOaId) {
@@ -224,7 +225,7 @@
       displayName: currentUser.displayName,
       pictureUrl: currentUser.pictureUrl
     });
-    const res = await fetch(`/api/me?${q.toString()}`);
+    const res = await fetch(`${BASE_PATH}/api/me?${q.toString()}`);
     if (res.ok) {
       const state = await res.json();
       renderState(state);
@@ -235,7 +236,7 @@
     const boothCode = extractBoothCodeFromInput(rawCode);
     if (!boothCode) return;
 
-    const res = await fetch('/api/scan', {
+    const res = await fetch(`${BASE_PATH}/api/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -277,7 +278,7 @@
       els.schoolInput.focus();
       return;
     }
-    const res = await fetch('/api/profile', {
+    const res = await fetch(`${BASE_PATH}/api/profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -306,7 +307,7 @@
 
   els.proceedRedeemModalBtn.addEventListener('click', async () => {
     els.redeemConfirmModal.classList.remove('open');
-    const res = await fetch('/api/redeem', {
+    const res = await fetch(`${BASE_PATH}/api/redeem`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lineUserId: currentUser.lineUserId })

@@ -4,6 +4,8 @@ const QRCode = require('qrcode');
 
 function createApp(store, config = {}) {
   const app = express();
+  app.set('trust proxy', true);
+
   const adminPassword = String(config.adminPassword || process.env.ADMIN_PASSWORD || 'technopark2026');
   const liffId = String(config.liffId !== undefined ? config.liffId : (process.env.LIFF_ID || '')).trim();
   const lineOaId = String(config.lineOaId || process.env.LINE_OA_ID || '@096ilctj').trim();
@@ -12,16 +14,17 @@ function createApp(store, config = {}) {
   app.use(express.json({ limit: '512kb' }));
 
   const publicDir = path.join(__dirname, '..', 'public');
+  const router = express.Router();
 
   // Serve /admin cleanly
-  app.get('/admin', (_req, res) => {
+  router.get('/admin', (_req, res) => {
     res.sendFile(path.join(publicDir, 'admin.html'));
   });
 
-  app.use(express.static(publicDir));
+  router.use(express.static(publicDir));
 
   // Public Configuration
-  app.get('/api/config', (_req, res) => {
+  router.get('/api/config', (_req, res) => {
     const settings = store.getSettings();
     res.json({
       liffId,
@@ -33,7 +36,7 @@ function createApp(store, config = {}) {
   });
 
   // Get participant state
-  app.get('/api/me', (req, res) => {
+  router.get('/api/me', (req, res) => {
     try {
       const lineUserId = String(req.query.lineUserId || '').trim();
       const displayName = String(req.query.displayName || '').trim();
@@ -49,7 +52,7 @@ function createApp(store, config = {}) {
   });
 
   // Scan booth QR
-  app.post('/api/scan', (req, res) => {
+  router.post('/api/scan', (req, res) => {
     try {
       const { lineUserId, displayName, pictureUrl, boothCode } = req.body || {};
       const result = store.scanBooth({ lineUserId, displayName, pictureUrl, boothCode });
@@ -70,7 +73,7 @@ function createApp(store, config = {}) {
   });
 
   // Save short post-completion profile
-  app.post('/api/profile', (req, res) => {
+  router.post('/api/profile', (req, res) => {
     try {
       const { lineUserId, gradeLevel, schoolName } = req.body || {};
       const state = store.saveProfile({ lineUserId, gradeLevel, schoolName });
@@ -81,7 +84,7 @@ function createApp(store, config = {}) {
   });
 
   // Confirm reward redemption in front of staff
-  app.post('/api/redeem', (req, res) => {
+  router.post('/api/redeem', (req, res) => {
     try {
       const { lineUserId } = req.body || {};
       const state = store.redeemReward(lineUserId);
@@ -92,12 +95,14 @@ function createApp(store, config = {}) {
   });
 
   // Generate SVG QR Code for booth poster
-  app.get('/api/qr/:code', async (req, res) => {
+  router.get('/api/qr/:code', async (req, res) => {
     try {
       const code = String(req.params.code || '').trim();
       const customUrl = String(req.query.url || '').trim();
+      const mountPrefix = req.baseUrl || '';
+      const defaultHostUrl = `${req.protocol}://${req.get('host')}${mountPrefix}`;
       const base = customUrl ||
-        (liffId ? `https://liff.line.me/${liffId}` : (publicBaseUrl || `${req.protocol}://${req.get('host')}`));
+        (liffId ? `https://liff.line.me/${liffId}` : (publicBaseUrl || defaultHostUrl));
       const sep = base.includes('?') ? '&' : '?';
       const targetUrl = customUrl ? customUrl : `${base.replace(/\/$/, '')}${sep}booth=${encodeURIComponent(code)}`;
 
@@ -118,7 +123,7 @@ function createApp(store, config = {}) {
   });
 
   // Lookup booth details by code (for printable poster page)
-  app.get('/api/booth-by-code/:code', (req, res) => {
+  router.get('/api/booth-by-code/:code', (req, res) => {
     const code = String(req.params.code || '').trim().toLowerCase();
     const booth = store.listBooths({ activeOnly: false }).find((b) => String(b.code).toLowerCase() === code);
     if (!booth) {
@@ -142,11 +147,11 @@ function createApp(store, config = {}) {
     return next();
   }
 
-  app.get('/api/admin/overview', requireAdmin, (_req, res) => {
+  router.get('/api/admin/overview', requireAdmin, (_req, res) => {
     res.json(store.getAdminOverview());
   });
 
-  app.post('/api/admin/booths', requireAdmin, (req, res) => {
+  router.post('/api/admin/booths', requireAdmin, (req, res) => {
     try {
       const booth = store.createBooth(req.body || {});
       return res.status(201).json(booth);
@@ -155,7 +160,7 @@ function createApp(store, config = {}) {
     }
   });
 
-  app.put('/api/admin/booths/:id', requireAdmin, (req, res) => {
+  router.put('/api/admin/booths/:id', requireAdmin, (req, res) => {
     try {
       const booth = store.updateBooth(req.params.id, req.body || {});
       return res.json(booth);
@@ -164,17 +169,17 @@ function createApp(store, config = {}) {
     }
   });
 
-  app.delete('/api/admin/booths/:id', requireAdmin, (req, res) => {
+  router.delete('/api/admin/booths/:id', requireAdmin, (req, res) => {
     const ok = store.deleteBooth(req.params.id);
     res.json({ deleted: ok });
   });
 
-  app.post('/api/admin/settings', requireAdmin, (req, res) => {
+  router.post('/api/admin/settings', requireAdmin, (req, res) => {
     const updated = store.updateSettings(req.body || {});
     res.json(updated);
   });
 
-  app.post('/api/admin/participants/:lineUserId/toggle-redeem', requireAdmin, (req, res) => {
+  router.post('/api/admin/participants/:lineUserId/toggle-redeem', requireAdmin, (req, res) => {
     try {
       const { isRedeemed } = req.body || {};
       const state = store.toggleRedeemAdmin(req.params.lineUserId, isRedeemed);
@@ -184,13 +189,26 @@ function createApp(store, config = {}) {
     }
   });
 
-  app.get('/api/admin/export.csv', requireAdmin, (_req, res) => {
+  router.get('/api/admin/export.csv', requireAdmin, (_req, res) => {
     const csv = store.exportCsv();
     const dateStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="openhouse-participants-${dateStr}.csv"`);
     res.send(csv);
   });
+
+  // Redirect bare /openhouse to /openhouse/ (preserving query string like ?booth=...)
+  app.use((req, res, next) => {
+    if (req.originalUrl === '/openhouse' || req.originalUrl.startsWith('/openhouse?')) {
+      const query = req.originalUrl.slice('/openhouse'.length);
+      return res.redirect(302, `/openhouse/${query}`);
+    }
+    return next();
+  });
+
+  // Mount under both /openhouse (for Nginx Proxy Manager custom location) and / (root)
+  app.use('/openhouse', router);
+  app.use('/', router);
 
   return app;
 }

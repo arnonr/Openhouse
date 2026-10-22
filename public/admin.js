@@ -1,4 +1,5 @@
 (function () {
+  const BASE_PATH = window.location.pathname.startsWith('/openhouse') ? '/openhouse' : '';
   let adminPassword = sessionStorage.getItem('openhouse_admin_pw') || '';
   let cachedOverview = null;
 
@@ -42,7 +43,7 @@
       { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
       options.headers || {}
     );
-    return fetch(path, Object.assign({}, options, { headers }));
+    return fetch(`${BASE_PATH}${path}`, Object.assign({}, options, { headers }));
   }
 
   async function fetchOverview() {
@@ -88,7 +89,7 @@
           </div>
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <a href="/poster.html?code=${encodeURIComponent(b.code)}" target="_blank" class="small-btn primary">🖨️ พิมพ์ป้าย QR</a>
+          <a href="${BASE_PATH}/poster.html?code=${encodeURIComponent(b.code)}" target="_blank" class="small-btn primary">🖨️ พิมพ์ป้าย QR</a>
           <button class="small-btn toggle-btn">${b.is_active ? 'ปิดฐาน' : 'เปิดฐาน'}</button>
           <button class="small-btn edit-btn">แก้ไขชื่อ</button>
           <button class="small-btn danger del-btn">ลบ</button>
@@ -193,7 +194,7 @@
   els.refreshBtn.addEventListener('click', fetchOverview);
 
   els.exportCsvBtn.addEventListener('click', () => {
-    window.location.href = `/api/admin/export.csv?key=${encodeURIComponent(adminPassword)}`;
+    window.location.href = `${BASE_PATH}/api/admin/export.csv?key=${encodeURIComponent(adminPassword)}`;
   });
 
   els.addBoothBtn.addEventListener('click', async () => {

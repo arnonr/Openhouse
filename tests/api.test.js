@@ -151,5 +151,36 @@ test('Sanitizes dynamic HTML with escapeHtml in frontend scripts and supports li
   assert.ok(appJs.includes("urlParams.get('liff.state')"));
 });
 
+test('Supports Nginx Proxy Manager Custom Location subpath /openhouse', async () => {
+  const store = createDb(':memory:');
+  const app = createApp(store);
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    // Bare /openhouse?booth=ST-01-ROBOT redirects to /openhouse/?booth=ST-01-ROBOT
+    const redirRes = await fetch(`${baseUrl}/openhouse?booth=ST-01-ROBOT`, { redirect: 'manual' });
+    assert.equal(redirRes.status, 302);
+    assert.equal(redirRes.headers.get('location'), '/openhouse/?booth=ST-01-ROBOT');
+
+    // Subpath /openhouse/ serves student UI
+    const subHome = await fetch(`${baseUrl}/openhouse/`);
+    assert.equal(subHome.status, 200);
+    assert.ok((await subHome.text()).includes('อุทยานเทคโนโลยี มจพ.'));
+
+    // Subpath /openhouse/admin serves admin UI
+    const subAdmin = await fetch(`${baseUrl}/openhouse/admin`);
+    assert.equal(subAdmin.status, 200);
+
+    // Subpath /openhouse/api/config serves JSON config
+    const subCfg = await fetch(`${baseUrl}/openhouse/api/config`);
+    assert.equal(subCfg.status, 200);
+    const cfg = await subCfg.json();
+    assert.equal(cfg.lineOaId, '@096ilctj');
+  } finally {
+    server.close();
+  }
+});
+
+
 
 

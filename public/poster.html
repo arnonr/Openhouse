@@ -166,11 +166,12 @@
 
   <script>
     (async function () {
+      const BASE_PATH = window.location.pathname.startsWith('/openhouse') ? '/openhouse' : '';
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code') || 'ST-01-ROBOT';
       document.getElementById('posterBoothCode').textContent = code;
 
-      const infoRes = await fetch(`/api/booth-by-code/${encodeURIComponent(code)}`);
+      const infoRes = await fetch(`${BASE_PATH}/api/booth-by-code/${encodeURIComponent(code)}`);
       if (infoRes.ok) {
         const data = await infoRes.json();
         document.getElementById('posterBoothName').textContent = `${data.booth.icon || '📍'} ${data.booth.name}`;
@@ -183,7 +184,7 @@
         }
       }
 
-      const qrRes = await fetch(`/api/qr/${encodeURIComponent(code)}`);
+      const qrRes = await fetch(`${BASE_PATH}/api/qr/${encodeURIComponent(code)}`);
       if (qrRes.ok) {
         document.getElementById('qrContainer').innerHTML = await qrRes.text();
       }
