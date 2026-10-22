@@ -104,7 +104,7 @@ test('Student API workflow, cooldown 429, validation 400, and Admin auth protect
   }
 });
 
-test('Serves Student Stamp Rally HTML page at /', async () => {
+test('Serves Student Stamp Rally HTML page at / and Admin/Poster pages', async () => {
   const store = createDb(':memory:');
   const app = createApp(store);
   const server = app.listen(0);
@@ -114,6 +114,16 @@ test('Serves Student Stamp Rally HTML page at /', async () => {
     assert.equal(homeRes.status, 200);
     const html = await homeRes.text();
     assert.ok(html.includes('อุทยานเทคโนโลยี มจพ.'));
+
+    const adminRes = await fetch(`${baseUrl}/admin`);
+    assert.equal(adminRes.status, 200);
+    const adminHtml = await adminRes.text();
+    assert.ok(adminHtml.includes('ระบบจัดการงาน Open House'));
+
+    const posterRes = await fetch(`${baseUrl}/poster.html?code=ST-01-ROBOT`);
+    assert.equal(posterRes.status, 200);
+    const posterHtml = await posterRes.text();
+    assert.ok(posterHtml.includes('OPEN HOUSE STAMP RALLY'));
   } finally {
     server.close();
   }
