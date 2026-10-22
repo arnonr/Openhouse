@@ -47,6 +47,15 @@
     proceedRedeemModalBtn: document.getElementById('proceedRedeemModalBtn')
   };
 
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function showToast(message, type = 'success') {
     els.toastBanner.textContent = message;
     els.toastBanner.className = `toast-banner ${type}`;
@@ -144,7 +153,7 @@
     const p = state.participant;
     els.userName.textContent = p.display_name;
     if (p.picture_url) {
-      els.userAvatar.innerHTML = `<img src="${p.picture_url}" alt="avatar" />`;
+      els.userAvatar.innerHTML = `<img src="${escapeHtml(p.picture_url)}" alt="avatar" />`;
     } else {
       els.userAvatar.textContent = (p.display_name || 'นร').slice(0, 2);
     }
@@ -165,9 +174,9 @@
       const card = document.createElement('div');
       card.className = `stamp-item ${b.stamped ? 'stamped' : ''}`;
       card.innerHTML = `
-        <div class="stamp-icon">${b.icon || '📍'}</div>
-        <div class="stamp-name">${b.name}</div>
-        <div class="stamp-desc">${b.description || ''}</div>
+        <div class="stamp-icon">${escapeHtml(b.icon || '📍')}</div>
+        <div class="stamp-name">${escapeHtml(b.name)}</div>
+        <div class="stamp-desc">${escapeHtml(b.description || '')}</div>
         <div class="stamp-badge">${b.stamped ? '✓ ประทับตราแล้ว' : 'รอสแกน QR'}</div>
       `;
       els.stampGrid.appendChild(card);
@@ -380,9 +389,10 @@
 
     await loadMyState();
 
-    // Check if URL has ?booth=CODE from scanning a physical booth QR code
+    // Check if URL has ?booth=CODE or ?liff.state=%3Fbooth%3DCODE from scanning a physical booth QR code
     const urlParams = new URLSearchParams(window.location.search);
-    const boothParam = urlParams.get('booth');
+    const liffStateParams = new URLSearchParams(urlParams.get('liff.state') || '');
+    const boothParam = urlParams.get('booth') || liffStateParams.get('booth');
     if (boothParam) {
       await performScan(boothParam);
       // Clean URL query parameter without reloading

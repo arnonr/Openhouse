@@ -140,4 +140,16 @@ test('Includes Docker deployment files and LINE OA (@096ilctj) + Nginx Proxy Man
   assert.ok(readme.includes('Nginx Proxy Manager'));
 });
 
+test('Sanitizes dynamic HTML with escapeHtml in frontend scripts and supports liff.state booth param', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..');
+  const adminJs = fs.readFileSync(path.join(root, 'public', 'admin.js'), 'utf8');
+  const appJs = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
+  assert.ok(adminJs.includes('function escapeHtml'));
+  assert.ok(appJs.includes('function escapeHtml'));
+  assert.ok(appJs.includes("urlParams.get('liff.state')"));
+});
+
+
 

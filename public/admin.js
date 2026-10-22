@@ -28,6 +28,15 @@
     participantsTableBody: document.getElementById('participantsTableBody')
   };
 
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function apiAdmin(path, options = {}) {
     const headers = Object.assign(
       { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
@@ -71,11 +80,11 @@
       row.innerHTML = `
         <div>
           <div style="font-weight: 700; font-size: 14px;">
-            ${b.icon || '📍'} ${b.name}
-            <span style="font-size: 11px; color: #059669; margin-left: 6px;">(สแกนแล้ว ${b.scan_count} คน)</span>
+            ${escapeHtml(b.icon || '📍')} ${escapeHtml(b.name)}
+            <span style="font-size: 11px; color: #059669; margin-left: 6px;">(สแกนแล้ว ${Number(b.scan_count) || 0} คน)</span>
           </div>
           <div style="font-size: 12px; color: #64748b;">
-            รหัส QR: <code>${b.code}</code> • ${b.description || '-'}
+            รหัส QR: <code>${escapeHtml(b.code)}</code> • ${escapeHtml(b.description || '-')}
           </div>
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -146,10 +155,10 @@
         : `<span style="color:#64748b;font-size:12px;">กำลังสะสม</span>`;
 
       tr.innerHTML = `
-        <td><strong>${p.display_name}</strong></td>
-        <td>${p.grade_level || '-'}</td>
-        <td>${p.school_name || '-'}</td>
-        <td><strong>${p.stamped_count} / ${p.total_active_booths}</strong> ฐาน</td>
+        <td><strong>${escapeHtml(p.display_name)}</strong></td>
+        <td>${escapeHtml(p.grade_level || '-')}</td>
+        <td>${escapeHtml(p.school_name || '-')}</td>
+        <td><strong>${Number(p.stamped_count) || 0} / ${Number(p.total_active_booths) || 0}</strong> ฐาน</td>
         <td>${statusBadge}</td>
         <td>
           <button class="small-btn toggle-redeem-btn">
