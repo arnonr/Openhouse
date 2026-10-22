@@ -1,0 +1,16 @@
+services:
+  openhouse-stamp-rally:
+    build: .
+    container_name: openhouse-stamp-rally
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-technopark2026}
+      - LIFF_ID=${LIFF_ID:-}
+      - LINE_OA_ID=${LINE_OA_ID:-@096ilctj}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - DB_PATH=/app/data/openhouse.db
+    volumes:
+      - ./data:/app/data

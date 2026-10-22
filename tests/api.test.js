@@ -129,3 +129,15 @@ test('Serves Student Stamp Rally HTML page at / and Admin/Poster pages', async (
   }
 });
 
+test('Includes Docker deployment files and LINE OA (@096ilctj) + Nginx Proxy Manager guide', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..');
+  assert.ok(fs.existsSync(path.join(root, 'Dockerfile')));
+  assert.ok(fs.existsSync(path.join(root, 'docker-compose.yml')));
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  assert.ok(readme.includes('@096ilctj'));
+  assert.ok(readme.includes('Nginx Proxy Manager'));
+});
+
+
