@@ -2,6 +2,12 @@
   const BASE_PATH = window.location.pathname.startsWith('/openhouse') ? '/openhouse' : '';
   let adminPassword = sessionStorage.getItem('openhouse_admin_pw') || '';
   let cachedOverview = null;
+  let editingBoothId = null;
+
+  const PRESET_ICONS = [
+    '🛩️', '🤖', '🚄', '🌱', '📶', '📡', '💡', '🩺', '🚀',
+    '✈️', '🛡️', '🦾', '🚆', '♻️', '⚡', '🎯', '🧠', '🛰️'
+  ];
 
   const els = {
     loginBox: document.getElementById('loginBox'),
@@ -13,13 +19,12 @@
     exportCsvBtn: document.getElementById('exportCsvBtn'),
     statTotal: document.getElementById('statTotal'),
     statCompleted: document.getElementById('statCompleted'),
+    statRequiredLabel: document.getElementById('statRequiredLabel'),
     statRedeemed: document.getElementById('statRedeemed'),
     statBooths: document.getElementById('statBooths'),
     boothListContainer: document.getElementById('boothListContainer'),
-    newBoothIcon: document.getElementById('newBoothIcon'),
-    newBoothName: document.getElementById('newBoothName'),
-    newBoothDesc: document.getElementById('newBoothDesc'),
-    addBoothBtn: document.getElementById('addBoothBtn'),
+    resetDefaultBoothsBtn: document.getElementById('resetDefaultBoothsBtn'),
+    openAddBoothModalBtn: document.getElementById('openAddBoothModalBtn'),
     settingEventTitle: document.getElementById('settingEventTitle'),
     settingPrizeDesc: document.getElementById('settingPrizeDesc'),
     settingRequiredStamps: document.getElementById('settingRequiredStamps'),
@@ -27,7 +32,19 @@
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
     settingsSavedMsg: document.getElementById('settingsSavedMsg'),
     searchParticipantInput: document.getElementById('searchParticipantInput'),
-    participantsTableBody: document.getElementById('participantsTableBody')
+    participantsTableBody: document.getElementById('participantsTableBody'),
+    boothModal: document.getElementById('boothModal'),
+    boothModalTitle: document.getElementById('boothModalTitle'),
+    closeBoothModalBtn: document.getElementById('closeBoothModalBtn'),
+    cancelBoothModalBtn: document.getElementById('cancelBoothModalBtn'),
+    saveBoothModalBtn: document.getElementById('saveBoothModalBtn'),
+    modalBoothIcon: document.getElementById('modalBoothIcon'),
+    modalBoothName: document.getElementById('modalBoothName'),
+    modalBoothDesc: document.getElementById('modalBoothDesc'),
+    modalBoothCode: document.getElementById('modalBoothCode'),
+    modalBoothOrder: document.getElementById('modalBoothOrder'),
+    iconPickerGrid: document.getElementById('iconPickerGrid'),
+    adminToast: document.getElementById('adminToast')
   };
 
   function escapeHtml(str) {
@@ -37,6 +54,63 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function showAdminToast(msg) {
+    if (!els.adminToast) return;
+    els.adminToast.textContent = msg;
+    els.adminToast.classList.add('show');
+    setTimeout(() => {
+      if (els.adminToast.textContent === msg) {
+        els.adminToast.classList.remove('show');
+      }
+    }, 3200);
+  }
+
+  function renderIconPicker() {
+    if (!els.iconPickerGrid) return;
+    els.iconPickerGrid.innerHTML = '';
+    const currentIcon = els.modalBoothIcon.value.trim();
+    PRESET_ICONS.forEach((ic) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `icon-choice-btn ${ic === currentIcon ? 'selected' : ''}`;
+      btn.textContent = ic;
+      btn.addEventListener('click', () => {
+        els.modalBoothIcon.value = ic;
+        renderIconPicker();
+      });
+      els.iconPickerGrid.appendChild(btn);
+    });
+  }
+
+  function openBoothModal(booth = null) {
+    if (booth) {
+      editingBoothId = booth.id;
+      els.boothModalTitle.textContent = '✏️ แก้ไขข้อมูลฐานกิจกรรม';
+      els.modalBoothIcon.value = booth.icon || '📍';
+      els.modalBoothName.value = booth.name || '';
+      els.modalBoothDesc.value = booth.description || '';
+      els.modalBoothCode.value = booth.code || '';
+      els.modalBoothOrder.value = booth.sort_order ?? 1;
+    } else {
+      editingBoothId = null;
+      const nextOrder = cachedOverview && cachedOverview.booths ? cachedOverview.booths.length + 1 : 1;
+      els.boothModalTitle.textContent = '+ เพิ่มฐานกิจกรรมใหม่';
+      els.modalBoothIcon.value = '📍';
+      els.modalBoothName.value = '';
+      els.modalBoothDesc.value = '';
+      els.modalBoothCode.value = `ST-0${nextOrder}`;
+      els.modalBoothOrder.value = nextOrder;
+    }
+    renderIconPicker();
+    els.boothModal.classList.add('open');
+    els.modalBoothName.focus();
+  }
+
+  function closeBoothModal() {
+    els.boothModal.classList.remove('open');
+    editingBoothId = null;
   }
 
   async function apiAdmin(path, options = {}) {
@@ -69,6 +143,9 @@
     els.statCompleted.textContent = data.stats.completedCount;
     els.statRedeemed.textContent = data.stats.redeemedCount;
     els.statBooths.textContent = data.stats.activeBoothCount;
+    if (els.statRequiredLabel) {
+      els.statRequiredLabel.textContent = `เกณฑ์ขั้นต่ำ ${data.stats.requiredStamps || 3} ฐาน`;
+    }
 
     els.settingEventTitle.value = data.settings.event_title || '';
     els.settingPrizeDesc.value = data.settings.prize_description || '';
@@ -81,47 +158,47 @@
     els.boothListContainer.innerHTML = '';
     data.booths.forEach((b) => {
       const row = document.createElement('div');
-      row.className = `booth-row ${b.is_active ? '' : 'inactive'}`;
+      row.className = `booth-card ${b.is_active ? '' : 'inactive'}`;
       row.innerHTML = `
-        <div>
-          <div style="font-weight: 700; font-size: 14px;">
-            ${escapeHtml(b.icon || '📍')} ${escapeHtml(b.name)}
-            <span style="font-size: 11px; color: #059669; margin-left: 6px;">(สแกนแล้ว ${Number(b.scan_count) || 0} คน)</span>
+        <div class="booth-icon-box" aria-hidden="true">${escapeHtml(b.icon || '📍')}</div>
+        <div class="booth-main">
+          <div class="booth-title-row">
+            <span class="booth-name-text">${escapeHtml(b.name)}</span>
+            <span class="pill ${b.is_active ? 'pill-green' : 'pill-slate'}">
+              ${b.is_active ? '● เปิดใช้งาน' : '○ ปิดชั่วคราว'}
+            </span>
+            <span class="pill pill-blue">สแกนแล้ว ${Number(b.scan_count) || 0} คน</span>
           </div>
-          <div style="font-size: 12px; color: #64748b;">
-            รหัส QR: <code>${escapeHtml(b.code)}</code> • ${escapeHtml(b.description || '-')}
+          <div class="booth-meta-row">
+            <span>📍 สถานที่/คำอธิบาย: <strong>${escapeHtml(b.description || '-')}</strong></span>
+            <span>• รหัส QR: <code>${escapeHtml(b.code)}</code></span>
           </div>
         </div>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <a href="${BASE_PATH}/poster.html?code=${encodeURIComponent(b.code)}" target="_blank" class="small-btn primary">🖨️ พิมพ์ป้าย QR</a>
-          <button class="small-btn toggle-btn">${b.is_active ? 'ปิดฐาน' : 'เปิดฐาน'}</button>
-          <button class="small-btn edit-btn">แก้ไขชื่อ</button>
-          <button class="small-btn danger del-btn">ลบ</button>
+        <div class="booth-actions">
+          <a href="${BASE_PATH}/poster.html?code=${encodeURIComponent(b.code)}" target="_blank" class="action-btn primary">🖨️ พิมพ์ป้าย QR</a>
+          <button type="button" class="action-btn edit-btn">✏️ แก้ไขฐาน</button>
+          <button type="button" class="action-btn toggle-btn">${b.is_active ? 'ปิดฐาน' : 'เปิดฐาน'}</button>
+          <button type="button" class="action-btn danger del-btn">ลบ</button>
         </div>
       `;
+
+      row.querySelector('.edit-btn').addEventListener('click', () => {
+        openBoothModal(b);
+      });
 
       row.querySelector('.toggle-btn').addEventListener('click', async () => {
         await apiAdmin(`/api/admin/booths/${b.id}`, {
           method: 'PUT',
           body: JSON.stringify({ is_active: b.is_active ? 0 : 1 })
         });
-        await fetchOverview();
-      });
-
-      row.querySelector('.edit-btn').addEventListener('click', async () => {
-        const newName = prompt('แก้ไขชื่อฐานกิจกรรม:', b.name);
-        if (!newName) return;
-        const newDesc = prompt('แก้ไขคำอธิบายฐาน:', b.description || '');
-        await apiAdmin(`/api/admin/booths/${b.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ name: newName, description: newDesc ?? b.description })
-        });
+        showAdminToast(b.is_active ? `ปิดการใช้งาน "${b.name}" แล้ว` : `เปิดการใช้งาน "${b.name}" แล้ว`);
         await fetchOverview();
       });
 
       row.querySelector('.del-btn').addEventListener('click', async () => {
         if (!confirm(`ต้องการลบ "${b.name}" ใช่หรือไม่?`)) return;
         await apiAdmin(`/api/admin/booths/${b.id}`, { method: 'DELETE' });
+        showAdminToast(`ลบฐานกิจกรรมเรียบร้อยแล้ว`);
         await fetchOverview();
       });
 
@@ -146,7 +223,7 @@
     els.participantsTableBody.innerHTML = '';
     if (list.length === 0) {
       els.participantsTableBody.innerHTML = `
-        <tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">ยังไม่มีข้อมูลผู้เข้าร่วม</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:#64748b;padding:28px;">ยังไม่มีข้อมูลผู้เข้าร่วม</td></tr>
       `;
       return;
     }
@@ -154,9 +231,9 @@
     list.forEach((p) => {
       const tr = document.createElement('tr');
       const statusBadge = p.is_redeemed
-        ? `<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:99px;font-weight:700;font-size:11px;">✓ รับรางวัลแล้ว</span>`
+        ? `<span class="pill pill-green">✓ รับรางวัลแล้ว</span>`
         : p.is_completed
-        ? `<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:99px;font-weight:700;font-size:11px;">พร้อมแลกรางวัล</span>`
+        ? `<span class="pill pill-blue">พร้อมแลกรางวัล</span>`
         : `<span style="color:#64748b;font-size:12px;">กำลังสะสม</span>`;
 
       tr.innerHTML = `
@@ -166,7 +243,7 @@
         <td><strong>${Number(p.stamped_count) || 0} / ${Number(p.required_stamps) || 3}</strong> ฐาน <span style="font-size:11px;color:#64748b;">(จาก ${Number(p.total_active_booths) || 0})</span></td>
         <td>${statusBadge}</td>
         <td>
-          <button class="small-btn toggle-redeem-btn">
+          <button type="button" class="action-btn toggle-redeem-btn" style="padding:5px 10px;font-size:12px;">
             ${p.is_redeemed ? 'ยกเลิกสถานะรับของ' : 'กดยืนยันรับของให้'}
           </button>
         </td>
@@ -177,10 +254,69 @@
           method: 'POST',
           body: JSON.stringify({ isRedeemed: !p.is_redeemed })
         });
+        showAdminToast(`อัปเดตสถานะของ ${p.display_name} เรียบร้อยแล้ว`);
         await fetchOverview();
       });
 
       els.participantsTableBody.appendChild(tr);
+    });
+  }
+
+  // Modal listeners
+  els.openAddBoothModalBtn.addEventListener('click', () => openBoothModal(null));
+  els.closeBoothModalBtn.addEventListener('click', closeBoothModal);
+  els.cancelBoothModalBtn.addEventListener('click', closeBoothModal);
+  els.modalBoothIcon.addEventListener('input', renderIconPicker);
+
+  els.saveBoothModalBtn.addEventListener('click', async () => {
+    const icon = els.modalBoothIcon.value.trim() || '📍';
+    const name = els.modalBoothName.value.trim();
+    const description = els.modalBoothDesc.value.trim();
+    const code = els.modalBoothCode.value.trim();
+    const sort_order = Number(els.modalBoothOrder.value) || 1;
+
+    if (!name) {
+      alert('กรุณาระบุชื่อฐานกิจกรรม');
+      els.modalBoothName.focus();
+      return;
+    }
+
+    if (editingBoothId) {
+      const res = await apiAdmin(`/api/admin/booths/${editingBoothId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ icon, name, description, code, sort_order })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.message || 'ไม่สามารถบันทึกการแก้ไขได้');
+        return;
+      }
+      showAdminToast('✓ บันทึกการแก้ไขฐานกิจกรรมเรียบร้อยแล้ว');
+    } else {
+      const res = await apiAdmin('/api/admin/booths', {
+        method: 'POST',
+        body: JSON.stringify({ icon, name, description, code, sort_order })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.message || 'ไม่สามารถเพิ่มฐานกิจกรรมได้');
+        return;
+      }
+      showAdminToast('✓ เพิ่มฐานกิจกรรมใหม่เรียบร้อยแล้ว');
+    }
+
+    closeBoothModal();
+    await fetchOverview();
+  });
+
+  if (els.resetDefaultBoothsBtn) {
+    els.resetDefaultBoothsBtn.addEventListener('click', async () => {
+      if (!confirm('ต้องการตั้งค่ารายชื่อฐานเป็น 9 ศูนย์ปฏิบัติการมาตรฐานของอุทยานเทคโนโลยี มจพ. ใช่หรือไม่?')) {
+        return;
+      }
+      await apiAdmin('/api/admin/booths/reset-defaults', { method: 'POST' });
+      showAdminToast('✨ โหลดข้อมูล 9 ศูนย์ปฏิบัติการมาตรฐานเรียบร้อยแล้ว');
+      await fetchOverview();
     });
   }
 
@@ -195,27 +331,13 @@
     if (e.key === 'Enter') els.loginBtn.click();
   });
 
-  els.refreshBtn.addEventListener('click', fetchOverview);
+  els.refreshBtn.addEventListener('click', async () => {
+    await fetchOverview();
+    showAdminToast('รีเฟรชข้อมูลล่าสุดแล้ว');
+  });
 
   els.exportCsvBtn.addEventListener('click', () => {
     window.location.href = `${BASE_PATH}/api/admin/export.csv?key=${encodeURIComponent(adminPassword)}`;
-  });
-
-  els.addBoothBtn.addEventListener('click', async () => {
-    const icon = els.newBoothIcon.value.trim() || '📍';
-    const name = els.newBoothName.value.trim();
-    const description = els.newBoothDesc.value.trim();
-    if (!name) {
-      alert('กรุณาระบุชื่อฐานกิจกรรม');
-      return;
-    }
-    await apiAdmin('/api/admin/booths', {
-      method: 'POST',
-      body: JSON.stringify({ icon, name, description })
-    });
-    els.newBoothName.value = '';
-    els.newBoothDesc.value = '';
-    await fetchOverview();
   });
 
   els.saveSettingsBtn.addEventListener('click', async () => {
@@ -229,6 +351,7 @@
       })
     });
     els.settingsSavedMsg.textContent = '✓ บันทึกการตั้งค่าเรียบร้อยแล้ว';
+    showAdminToast('✓ บันทึกการตั้งค่าเกณฑ์หน้างานแล้ว');
     setTimeout(() => {
       els.settingsSavedMsg.textContent = '';
     }, 3000);

@@ -5,32 +5,67 @@ const { DatabaseSync } = require('node:sqlite');
 
 const DEFAULT_BOOTHS = [
   {
-    code: 'ST-01-ROBOT',
-    name: 'ฐานที่ 1: หุ่นยนต์และระบบอัตโนมัติ',
-    description: 'สาธิตแขนกลอุตสาหกรรมและหุ่นยนต์อัจฉริยะ',
-    icon: '🤖',
+    code: 'ST-01',
+    name: '1. ศูนย์ปฏิบัติการเทคโนโลยีอากาศยานและการป้องกันประเทศ',
+    description: 'ชั้น 1',
+    icon: '🛩️',
     sort_order: 1
   },
   {
-    code: 'ST-02-ENERGY',
-    name: 'ฐานที่ 2: พลังงานและสิ่งแวดล้อม',
-    description: 'นวัตกรรมพลังงานสะอาดและเทคโนโลยีเพื่อความยั่งยืน',
-    icon: '⚡',
+    code: 'ST-02',
+    name: '2. ศูนย์ปฏิบัติการระบบอัตโนมัติและหุ่นยนต์',
+    description: 'ชั้น 2',
+    icon: '🤖',
     sort_order: 2
   },
   {
-    code: 'ST-03-BIOFOOD',
-    name: 'ฐานที่ 3: นวัตกรรมอาหารและชีวภาพ',
-    description: 'เทคโนโลยีแปรรูปอาหารและการวิจัยทางชีวภาพ',
-    icon: '🔬',
+    code: 'ST-03',
+    name: '3. ศูนย์ปฏิบัติการเทคโนโลยีนวัตกรรมยานยนต์สมัยใหม่และระบบขนส่งทางราง',
+    description: 'ชั้น 6 (จัดแสดงชั้น 1)',
+    icon: '🚄',
     sort_order: 3
   },
   {
-    code: 'ST-04-SMARTIOT',
-    name: 'ฐานที่ 4: Smart Tech & IoT',
-    description: 'ระบบเซ็นเซอร์อัจฉริยะและการพัฒนาซอฟต์แวร์ยุคใหม่',
-    icon: '🚀',
+    code: 'ST-04',
+    name: '4. ศูนย์ปฏิบัติการสิ่งแวดล้อมและการอนุรักษ์พลังงาน',
+    description: 'จัดแสดงที่ชั้น 1',
+    icon: '🌱',
     sort_order: 4
+  },
+  {
+    code: 'ST-05',
+    name: '5. ศูนย์ปฏิบัติการนวัตกรรมไร้สายล้ำหน้ายุค 5G',
+    description: 'จัดแสดงที่ชั้น 1',
+    icon: '📶',
+    sort_order: 5
+  },
+  {
+    code: 'ST-06',
+    name: '6. ศูนย์ปฏิบัติการเทคโนโลยีเรดาร์',
+    description: 'ชั้น 8',
+    icon: '📡',
+    sort_order: 6
+  },
+  {
+    code: 'ST-07',
+    name: '7. ศูนย์ปฏิบัติการอิเล็กทรอนิกส์อัจฉริยะและนวัตกรรมดิจิทัล',
+    description: 'ชั้น 8',
+    icon: '💡',
+    sort_order: 7
+  },
+  {
+    code: 'ST-08',
+    name: '8. ศูนย์ปฏิบัติการเทคโนโลยีและนวัตกรรมเครื่องมือแพทย์',
+    description: 'ชั้น 9',
+    icon: '🩺',
+    sort_order: 8
+  },
+  {
+    code: 'ST-09',
+    name: '9. สถาบันเทคโนโลยีอวกาศนานาชาติเพื่อการพัฒนาเศรษฐกิจ',
+    description: 'ชั้น 10',
+    icon: '🚀',
+    sort_order: 9
   }
 ];
 
@@ -109,17 +144,28 @@ function createDb(dbPath = ':memory:') {
     );
   `);
 
-  // Seed default booths if empty
-  const boothCountRow = db.prepare('SELECT COUNT(*) AS count FROM booths').get();
-  if (Number(boothCountRow.count) === 0) {
+  function seedDefaultBooths({ replaceExisting = false } = {}) {
+    if (replaceExisting) {
+      db.exec('DELETE FROM booths;');
+    }
     const insertBooth = db.prepare(`
-      INSERT INTO booths (code, name, description, icon, sort_order, is_active, created_at)
+      INSERT OR IGNORE INTO booths (code, name, description, icon, sort_order, is_active, created_at)
       VALUES (?, ?, ?, ?, ?, 1, ?)
     `);
     const nowIso = new Date().toISOString();
     for (const b of DEFAULT_BOOTHS) {
       insertBooth.run(b.code, b.name, b.description, b.icon, b.sort_order, nowIso);
     }
+    return listBooths({ activeOnly: false });
+  }
+
+  // Seed default booths if empty, or auto-upgrade if still on the old 4 placeholder booths
+  const boothCountRow = db.prepare('SELECT COUNT(*) AS count FROM booths').get();
+  const hasLegacyPlaceholder = db.prepare("SELECT COUNT(*) AS count FROM booths WHERE code = 'ST-01-ROBOT'").get();
+  if (Number(boothCountRow.count) === 0) {
+    seedDefaultBooths({ replaceExisting: false });
+  } else if (Number(hasLegacyPlaceholder.count) > 0 && Number(boothCountRow.count) === 4) {
+    seedDefaultBooths({ replaceExisting: true });
   }
 
   // Seed default settings
@@ -497,6 +543,7 @@ function createDb(dbPath = ':memory:') {
     createBooth,
     updateBooth,
     deleteBooth,
+    seedDefaultBooths,
     getParticipantState,
     scanBooth,
     saveProfile,

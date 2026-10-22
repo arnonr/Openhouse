@@ -28,7 +28,7 @@ test('Student API workflow, cooldown 429, validation 400, and Admin auth protect
     });
     assert.equal(overviewRes.status, 200);
     const overview = await overviewRes.json();
-    assert.equal(overview.booths.length, 4);
+    assert.equal(overview.booths.length, 9);
 
     // First scan succeeds
     const scan1 = await fetch(`${baseUrl}/api/scan`, {

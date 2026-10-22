@@ -149,10 +149,14 @@ body {
   background: #fff;
   border: 2px dashed #cbd5e1;
   border-radius: 16px;
-  padding: 16px 12px;
+  padding: 14px 12px;
   text-align: center;
   transition: all 0.2s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .stamp-item.stamped {

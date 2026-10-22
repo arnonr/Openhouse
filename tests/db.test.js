@@ -2,10 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createDb } = require('../src/db');
 
-test('seeds 4 default booths and default settings', () => {
+test('seeds 9 default KMUTNB Techno Park booths and default settings', () => {
   const store = createDb(':memory:');
   const booths = store.listBooths({ activeOnly: true });
-  assert.equal(booths.length, 4);
+  assert.equal(booths.length, 9);
   const settings = store.getSettings();
   assert.equal(Number(settings.cooldown_seconds), 60);
   assert.equal(Number(settings.required_stamps), 3);
@@ -67,23 +67,22 @@ test('scans booths, handles idempotent repeat scans, enforces cooldown, and comp
   assert.ok(csv.includes('"รร.เตรียมวิศวฯ, มจพ."'));
 });
 
-test('unlocks completion after any 3 booths out of 5+ booths and still allows scanning more booths', () => {
+test('unlocks completion after any 3 booths out of 9 booths and still allows scanning more booths', () => {
   const store = createDb(':memory:');
   store.updateSettings({ cooldown_seconds: 0, required_stamps: 3 });
-  store.createBooth({ name: 'ฐานที่ 5: AI & Robotics', icon: '🧠' });
   const booths = store.listBooths({ activeOnly: true });
-  assert.equal(booths.length, 5);
+  assert.equal(booths.length, 9);
 
   // Scan 2 booths -> not completed yet (2/3)
   store.scanBooth({ lineUserId: 'U002', displayName: 'น้องแพรว', boothCode: booths[0].code });
   store.scanBooth({ lineUserId: 'U002', displayName: 'น้องแพรว', boothCode: booths[2].code });
   let state = store.getParticipantState('U002');
   assert.equal(state.requiredStamps, 3);
-  assert.equal(state.totalBooths, 5);
+  assert.equal(state.totalBooths, 9);
   assert.equal(state.isCompleted, false);
 
-  // Scan 3rd booth (any booth, e.g. booth #5) -> completed (3/3)!
-  store.scanBooth({ lineUserId: 'U002', displayName: 'น้องแพรว', boothCode: booths[4].code });
+  // Scan 3rd booth (any booth, e.g. booth #9) -> completed (3/3)!
+  store.scanBooth({ lineUserId: 'U002', displayName: 'น้องแพรว', boothCode: booths[8].code });
   state = store.getParticipantState('U002');
   assert.equal(state.stampedCount, 3);
   assert.equal(state.isCompleted, true);

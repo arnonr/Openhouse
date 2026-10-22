@@ -6,35 +6,54 @@
   <title>ระบบจัดการงาน Open House | อุทยานเทคโนโลยี มจพ.</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .admin-container {
-      max-width: 1080px;
+    .admin-shell {
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 24px 16px 60px;
+      padding: 24px 20px 72px;
     }
-    .admin-header {
-      background: #0f172a;
+    .admin-topbar {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       color: #fff;
-      padding: 20px 24px;
-      border-radius: 16px;
+      padding: 22px 26px;
+      border-radius: 18px;
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.14);
+    }
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 520px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
     }
     .stat-card {
       background: #fff;
       border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .stat-label {
       font-size: 13px;
@@ -42,217 +61,469 @@
       font-weight: 600;
     }
     .stat-value {
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 800;
-      margin-top: 4px;
+      margin-top: 6px;
+      line-height: 1.1;
     }
-    .admin-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    @media (max-width: 820px) {
-      .admin-grid {
-        grid-template-columns: 1fr;
-      }
+    .stat-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 6px;
     }
     .panel {
       background: #fff;
       border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
     }
-    .booth-row {
+    .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
       gap: 12px;
-      padding: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .panel-subtitle {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .booths-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .booth-card {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px;
       background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .booth-card:hover {
+      border-color: #cbd5e1;
+      background: #fff;
+    }
+    .booth-card.inactive {
+      opacity: 0.58;
+      background: #f1f5f9;
+    }
+    @media (max-width: 760px) {
+      .booth-card {
+        grid-template-columns: auto 1fr;
+      }
+      .booth-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top: 1px dashed #e2e8f0;
+      }
+    }
+    .booth-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: #fff;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
-    .booth-row.inactive {
-      opacity: 0.55;
+    .booth-main {
+      min-width: 0;
     }
-    .small-btn {
+    .booth-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .booth-name-text {
+      font-weight: 700;
+      font-size: 15px;
+      color: #0f172a;
+    }
+    .booth-meta-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 13px;
+      color: #475569;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .pill-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .pill-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .pill-slate {
+      background: #e2e8f0;
+      color: #475569;
+    }
+    .booth-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
       border: 1px solid #cbd5e1;
       background: #fff;
-      color: #334155;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 12px;
+      color: #1e293b;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
     }
-    .small-btn.primary {
+    .action-btn:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    .action-btn:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+    .action-btn.primary {
       background: #2563eb;
       color: #fff;
       border-color: #2563eb;
     }
-    .small-btn.green {
+    .action-btn.primary:hover {
+      background: #1d4ed8;
+    }
+    .action-btn.success {
       background: #059669;
       color: #fff;
       border-color: #059669;
     }
-    .small-btn.danger {
+    .action-btn.success:hover {
+      background: #047857;
+    }
+    .action-btn.danger {
       color: #dc2626;
-      border-color: #fca5a5;
+      border-color: #fecaca;
+      background: #fff;
+    }
+    .action-btn.danger:hover {
+      background: #fef2f2;
+    }
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .form-hint {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .icon-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+    @media (max-width: 480px) {
+      .icon-picker-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+    .icon-choice-btn {
+      height: 38px;
+      border-radius: 8px;
+      border: 1.5px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s ease;
+    }
+    .icon-choice-btn:hover,
+    .icon-choice-btn.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+      transform: scale(1.06);
     }
     table.data-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
     }
-    table.data-table th, table.data-table td {
-      padding: 10px 12px;
+    table.data-table th,
+    table.data-table td {
+      padding: 12px 14px;
       border-bottom: 1px solid #e2e8f0;
       text-align: left;
+      vertical-align: middle;
     }
     table.data-table th {
       background: #f8fafc;
       color: #475569;
       font-weight: 700;
+      white-space: nowrap;
+    }
+    .admin-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+      display: none;
+      z-index: 200;
+    }
+    .admin-toast.show {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <div class="admin-container">
+  <div class="admin-shell">
     <!-- Login View -->
     <div id="loginBox" class="panel" style="max-width: 420px; margin: 60px auto; text-align: center;">
-      <div style="font-size: 36px; margin-bottom: 8px;">🔐</div>
-      <h1 style="margin: 0 0 6px; font-size: 20px;">ระบบจัดการงาน Open House</h1>
-      <p style="margin: 0 0 16px; font-size: 13px; color: #64748b;">อุทยานเทคโนโลยี มจพ. (KMUTNB Techno Park)</p>
-      <input id="adminPasswordInput" type="password" class="text-input" placeholder="รหัสผ่านผู้ดูแลระบบ (ค่าเริ่มต้น: technopark2026)" style="margin-bottom: 12px;" />
+      <div style="font-size: 40px; margin-bottom: 8px;">🔐</div>
+      <h1 style="margin: 0 0 6px; font-size: 21px;">ระบบจัดการงาน Open House</h1>
+      <p style="margin: 0 0 18px; font-size: 13px; color: #64748b;">อุทยานเทคโนโลยี มจพ. (KMUTNB Techno Park)</p>
+      <div style="text-align: left; margin-bottom: 12px;">
+        <label for="adminPasswordInput" class="form-label">รหัสผ่านผู้ดูแลระบบ</label>
+        <input id="adminPasswordInput" type="password" class="text-input" placeholder="ค่าเริ่มต้น: technopark2026" />
+      </div>
       <button id="loginBtn" class="btn btn-primary">เข้าสู่ระบบจัดการ</button>
-      <div id="loginError" style="color: #dc2626; font-size: 12px; margin-top: 8px;"></div>
+      <div id="loginError" style="color: #dc2626; font-size: 12px; margin-top: 10px;"></div>
     </div>
 
-    <!-- Dashboard View -->
+    <!-- Main Dashboard View -->
     <div id="dashboardBox" style="display: none;">
-      <header class="admin-header">
+      <header class="admin-topbar">
         <div>
-          <div style="font-size: 11px; color: #38bdf8; font-weight: 700;">KMUTNB TECHNO PARK • LINE OA @096ilctj</div>
-          <h1 style="margin: 4px 0 0; font-size: 22px;">⚙️ ระบบจัดการงาน Open House (Admin Panel)</h1>
+          <div style="font-size: 11px; color: #38bdf8; font-weight: 700; letter-spacing: 0.5px;">KMUTNB TECHNO PARK • LINE OA @096ilctj</div>
+          <h1 style="margin: 4px 0 0; font-size: 22px;">⚙️ ระบบจัดการงาน Open House (Admin Console)</h1>
         </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <a href="./?demo=1" target="_blank" class="small-btn">📱 เปิดหน้าจอนักเรียน</a>
-          <button id="refreshBtn" class="small-btn">🔄 รีเฟรชข้อมูล</button>
-          <button id="exportCsvBtn" class="small-btn green">📥 ดาวน์โหลด Excel (CSV)</button>
+        <div class="topbar-actions">
+          <a href="./?demo=1" target="_blank" class="action-btn">📱 เปิดหน้าจอนักเรียน</a>
+          <button id="refreshBtn" class="action-btn">🔄 รีเฟรชข้อมูล</button>
+          <button id="exportCsvBtn" class="action-btn success">📥 ดาวน์โหลด Excel (CSV)</button>
         </div>
       </header>
 
-      <!-- Stats Cards -->
+      <!-- 4 KPI Stats Cards -->
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-label">ผู้เข้าร่วมทั้งหมด</div>
+          <div class="stat-label">👥 ผู้เข้าร่วมทั้งหมด</div>
           <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub">สแกนอย่างน้อย 1 ฐาน</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">สะสมแสตมป์ครบทุกฐานแล้ว</div>
+          <div class="stat-label">🎯 สะสมครบเกณฑ์แล้ว</div>
           <div class="stat-value" id="statCompleted" style="color: #2563eb;">0</div>
+          <div class="stat-sub" id="statRequiredLabel">เกณฑ์ขั้นต่ำ 3 ฐาน</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">แลกรับของรางวัลแล้ว</div>
+          <div class="stat-label">🎁 แลกรับของรางวัลแล้ว</div>
           <div class="stat-value" id="statRedeemed" style="color: #059669;">0</div>
+          <div class="stat-sub">กดยืนยันที่จุดลงทะเบียน</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">จำนวนฐานที่เปิดใช้งาน</div>
-          <div class="stat-value" id="statBooths">4</div>
+          <div class="stat-label">📍 ฐานที่เปิดใช้งาน</div>
+          <div class="stat-value" id="statBooths">9</div>
+          <div class="stat-sub">เลือกเข้าฐานใดก็ได้</div>
         </div>
       </div>
 
-      <div class="admin-grid">
-        <!-- Booths Management -->
-        <div class="panel">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <h2 style="margin: 0; font-size: 17px;">📍 จัดการฐานกิจกรรม (3–5 ฐาน) และพิมพ์ป้าย QR</h2>
+      <!-- Full-Width Booth Management Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">📍 จัดการฐานกิจกรรมและพิมพ์ใบป้าย QR Code</h2>
+            <p class="panel-subtitle">แก้ไขไอคอน ชื่อฐาน สถานที่จัดแสดง (ชั้น) หรือสั่งพิมพ์ใบป้าย QR ขนาด A4 ประจำแต่ละฐาน</p>
           </div>
-
-          <div id="boothListContainer"></div>
-
-          <!-- Add New Booth Form -->
-          <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; margin-top: 14px;">
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">+ เพิ่มฐานกิจกรรมใหม่</div>
-            <div style="display: grid; grid-template-columns: 70px 1fr 1fr auto; gap: 8px;">
-              <input id="newBoothIcon" type="text" class="text-input" placeholder="ไอคอน" value="🎯" />
-              <input id="newBoothName" type="text" class="text-input" placeholder="ชื่อฐาน เช่น ฐานที่ 5: AI" />
-              <input id="newBoothDesc" type="text" class="text-input" placeholder="คำอธิบายสั้นๆ" />
-              <button id="addBoothBtn" class="small-btn primary" style="padding: 0 14px;">เพิ่มฐาน</button>
-            </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="resetDefaultBoothsBtn" class="action-btn" title="รีเซ็ตเป็น 9 ศูนย์ปฏิบัติการมาตรฐานของอุทยานเทคโนโลยี มจพ.">
+              ✨ โหลดค่าเริ่มต้น 9 ฐาน มจพ.
+            </button>
+            <button id="openAddBoothModalBtn" class="action-btn primary">
+              + เพิ่มฐานกิจกรรมใหม่
+            </button>
           </div>
         </div>
 
-        <!-- Settings & Anti-Cheat Config -->
-        <div class="panel">
-          <h2 style="margin: 0 0 14px; font-size: 17px;">🛡️ ตั้งค่าหน้างาน & ป้องกันสแกนรัว</h2>
+        <div id="boothListContainer" class="booths-list"></div>
+      </section>
 
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px;">ชื่อกิจกรรมบนหัวบัตรแสตมป์</label>
+      <!-- Bottom 2-Column Grid: Participants Table (Left) + Event Settings (Right) -->
+      <div class="bottom-grid">
+        <!-- Participants List -->
+        <section class="panel" style="margin-bottom: 0;">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">📋 รายชื่อนักเรียนที่เข้าร่วมงาน</h2>
+              <p class="panel-subtitle">ตรวจสอบความคืบหน้าและกดยืนยันสถานะรับของรางวัล</p>
+            </div>
+            <input id="searchParticipantInput" type="text" class="text-input" placeholder="🔍 ค้นหาชื่อ หรือ โรงเรียน..." style="max-width: 250px;" />
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ชื่อใน LINE</th>
+                  <th>ระดับชั้น</th>
+                  <th>โรงเรียน / สถาบัน</th>
+                  <th>แสตมป์ที่ได้</th>
+                  <th>สถานะรางวัล</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="participantsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Event & Anti-Cheat Settings -->
+        <section class="panel" style="margin-bottom: 0;">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">🛡️ ตั้งค่าเกณฑ์หน้างาน</h2>
+              <p class="panel-subtitle">กำหนดจำนวนแสตมป์ขั้นต่ำและเวลาหน่วงระหว่างฐาน</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="settingEventTitle" class="form-label">ชื่อกิจกรรมบนหัวบัตรแสตมป์</label>
             <input id="settingEventTitle" type="text" class="text-input" />
           </div>
 
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px;">ข้อความเงื่อนไขของรางวัล</label>
+          <div class="form-group">
+            <label for="settingPrizeDesc" class="form-label">ข้อความเงื่อนไขแลกของรางวัล</label>
             <input id="settingPrizeDesc" type="text" class="text-input" />
           </div>
 
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
-              จำนวนฐานขั้นต่ำที่ต้องสแกนเพื่อแลกรางวัล (ฐาน)
-            </label>
+          <div class="form-group">
+            <label for="settingRequiredStamps" class="form-label">จำนวนฐานขั้นต่ำที่ต้องสแกนเพื่อแลกรางวัล (ฐาน)</label>
             <input id="settingRequiredStamps" type="number" min="1" max="50" class="text-input" value="3" />
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              เช่น มีทั้งหมดหลายฐาน แต่ตั้งไว้ 3 ฐาน เมื่อเด็กเลือกสแกนครบ 3 ฐานไหนก็ได้จะแลกรางวัลได้ทันที
-            </div>
+            <div class="form-hint">ค่าเริ่มต้น: 3 ฐาน (เมื่อสแกนครบ 3 ฐานใดก็ได้ จะปลดล็อกปุ่มรับรางวัลทันที)</div>
           </div>
 
-          <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
-              เวลาหน่วงระหว่างการสแกนฐานถัดไป (วินาที)
-            </label>
+          <div class="form-group">
+            <label for="settingCooldown" class="form-label">เวลาหน่วงระหว่างการสแกนฐานถัดไป (วินาที)</label>
             <input id="settingCooldown" type="number" min="0" max="600" class="text-input" />
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
-              แนะนำ 60 วินาทีเพื่อกันเด็กถ่ายรูปป้ายส่งให้เพื่อนกดรัวๆ (ตั้งเป็น 0 หากต้องการปิดการหน่วงเวลาตอนทดสอบ)
-            </div>
+            <div class="form-hint">แนะนำ 60 วินาทีเพื่อกันเด็กถ่ายรูปป้ายส่งให้เพื่อนกดรัวๆ (ตั้งเป็น 0 หากต้องการปิดตอนทดสอบ)</div>
           </div>
 
           <button id="saveSettingsBtn" class="btn btn-primary">💾 บันทึกการตั้งค่า</button>
-          <div id="settingsSavedMsg" style="font-size: 12px; color: #059669; margin-top: 8px; text-align: center;"></div>
-        </div>
-      </div>
-
-      <!-- Participants Table -->
-      <div class="panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-          <h2 style="margin: 0; font-size: 17px;">📋 รายชื่อนักเรียนที่เข้าร่วมงาน</h2>
-          <input id="searchParticipantInput" type="text" class="text-input" placeholder="ค้นหาชื่อ หรือ โรงเรียน..." style="max-width: 260px;" />
-        </div>
-        <div style="overflow-x: auto;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>ชื่อใน LINE</th>
-                <th>ระดับชั้น</th>
-                <th>โรงเรียน / สถาบัน</th>
-                <th>ความคืบหน้า</th>
-                <th>สถานะรางวัล</th>
-                <th>จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="participantsTableBody"></tbody>
-          </table>
-        </div>
+          <div id="settingsSavedMsg" style="font-size: 12px; color: #059669; margin-top: 8px; text-align: center; font-weight: 600;"></div>
+        </section>
       </div>
     </div>
   </div>
+
+  <!-- Add / Edit Booth Modal -->
+  <div id="boothModal" class="modal-backdrop">
+    <div class="modal-content" style="max-width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="boothModalTitle" style="margin: 0; font-size: 18px;">✏️ แก้ไขข้อมูลฐานกิจกรรม</h3>
+        <button id="closeBoothModalBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label for="modalBoothIcon" class="form-label">ไอคอนประจำฐาน (เลือกจากด้านล่าง หรือพิมพ์เองได้)</label>
+        <div style="display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center;">
+          <input id="modalBoothIcon" type="text" class="text-input" style="font-size: 22px; text-align: center;" value="📍" />
+          <div style="font-size: 12px; color: #64748b;">คลิกเลือกไอคอนที่เหมาะกับศูนย์ปฏิบัติการด้านล่างได้เลยครับ:</div>
+        </div>
+        <div id="iconPickerGrid" class="icon-picker-grid"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="modalBoothName" class="form-label">ชื่อฐานกิจกรรม / ศูนย์ปฏิบัติการ</label>
+        <input id="modalBoothName" type="text" class="text-input" placeholder="เช่น 1. ศูนย์ปฏิบัติการเทคโนโลยีอากาศยาน..." />
+      </div>
+
+      <div class="form-group">
+        <label for="modalBoothDesc" class="form-label">คำอธิบาย / สถานที่จัดแสดง (ชั้น)</label>
+        <input id="modalBoothDesc" type="text" class="text-input" placeholder="เช่น ชั้น 6 (จัดแสดงชั้น 1)" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 120px; gap: 12px;">
+        <div class="form-group">
+          <label for="modalBoothCode" class="form-label">รหัส QR Code ประจำฐาน</label>
+          <input id="modalBoothCode" type="text" class="text-input" placeholder="เช่น ST-01" />
+        </div>
+        <div class="form-group">
+          <label for="modalBoothOrder" class="form-label">ลำดับแสดงผล</label>
+          <input id="modalBoothOrder" type="number" min="1" max="99" class="text-input" value="1" />
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button id="cancelBoothModalBtn" class="btn btn-outline">ยกเลิก</button>
+        <button id="saveBoothModalBtn" class="btn btn-primary">💾 บันทึกข้อมูลฐาน</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="adminToast" class="admin-toast"></div>
 
   <script src="admin.js"></script>
 </body>

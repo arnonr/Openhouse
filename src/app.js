@@ -174,6 +174,11 @@ function createApp(store, config = {}) {
     res.json({ deleted: ok });
   });
 
+  router.post('/api/admin/booths/reset-defaults', requireAdmin, (_req, res) => {
+    const booths = store.seedDefaultBooths({ replaceExisting: true });
+    res.json({ booths });
+  });
+
   router.post('/api/admin/settings', requireAdmin, (req, res) => {
     const updated = store.updateSettings(req.body || {});
     res.json(updated);
