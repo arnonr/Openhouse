@@ -13,6 +13,7 @@
   let selectedGrade = 'ม.ปลาย';
   let html5QrScanner = null;
   let editingProfile = false;
+  let reopeningSurvey = false;
   let surveyIframeLoadCount = 0;
   let lastState = null;
 
@@ -31,12 +32,14 @@
     profileFormView: document.getElementById('profileFormView'),
     surveyFormView: document.getElementById('surveyFormView'),
     surveyPrefillText: document.getElementById('surveyPrefillText'),
+    surveySectionStatus: document.getElementById('surveySectionStatus'),
     editProfileFromSurveyBtn: document.getElementById('editProfileFromSurveyBtn'),
     surveyLoadingOverlay: document.getElementById('surveyLoadingOverlay'),
     surveyIframe: document.getElementById('surveyIframe'),
     manualSurveyDoneBtn: document.getElementById('manualSurveyDoneBtn'),
     externalSurveyLink: document.getElementById('externalSurveyLink'),
     redeemReadyView: document.getElementById('redeemReadyView'),
+    reopenSurveyBtn: document.getElementById('reopenSurveyBtn'),
     redeemedDoneView: document.getElementById('redeemedDoneView'),
     gradeOptions: document.getElementById('gradeOptions'),
     schoolInput: document.getElementById('schoolInput'),
@@ -315,7 +318,7 @@
         if (p.school_name && !els.schoolInput.value) {
           els.schoolInput.value = p.school_name;
         }
-      } else if (!state.hasSurvey && rawFormUrl && els.surveyFormView) {
+      } else if ((!state.hasSurvey || reopeningSurvey) && rawFormUrl && els.surveyFormView) {
         els.profileFormView.style.display = 'none';
         els.surveyFormView.style.display = 'block';
         els.redeemReadyView.style.display = 'none';
@@ -331,6 +334,12 @@
           }
           if (els.surveyIframe && els.surveyIframe.getAttribute('data-loaded-url') !== urls.embedUrl) {
             surveyIframeLoadCount = 0;
+            if (els.surveySectionStatus) {
+              els.surveySectionStatus.style.background = '#eff6ff';
+              els.surveySectionStatus.style.borderColor = '#bfdbfe';
+              els.surveySectionStatus.style.color = '#1e40af';
+              els.surveySectionStatus.textContent = '📄 ส่วนที่ 1/2: กรอกข้อมูลทั่วไป แล้วเลื่อนลงมากดปุ่ม "ถัดไป" ในฟอร์ม';
+            }
             if (els.surveyLoadingOverlay) {
               els.surveyLoadingOverlay.style.display = 'flex';
             }
@@ -492,6 +501,7 @@
   });
 
   async function completeSurveyAndProceed() {
+    reopeningSurvey = false;
     const res = await fetch(`${BASE_PATH}/api/survey-complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -502,7 +512,7 @@
       showToast(data.message || 'ไม่สามารถบันทึกสถานะแบบประเมินได้', 'error');
       return;
     }
-    showToast('🎉 ขอบคุณที่ทำแบบประเมิน! แสดงหน้าจอนี้ที่จุดรับของรางวัลได้เลยครับ', 'success');
+    showToast('🎉 ขอบคุณที่ทำแบบประเมินครบทั้ง 2 ส่วน! แสดงหน้าจอนี้ที่จุดรับของรางวัลได้เลยครับ', 'success');
     renderState(data);
     if (els.completionSection && els.completionSection.scrollIntoView) {
       els.completionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -516,11 +526,32 @@
       if (els.surveyLoadingOverlay) {
         els.surveyLoadingOverlay.style.display = 'none';
       }
-      // 1st load = Google Form viewform loaded; 2nd load = formResponse confirmation loaded after clicking Submit
-      if (surveyIframeLoadCount >= 2) {
+      // Google Form has 2 sections:
+      // 1st load = Section 1 (viewform) loaded
+      // 2nd load = Section 2 loaded after clicking "ถัดไป (Next)" on Section 1
+      // 3rd load = formResponse confirmation loaded after clicking "ส่ง (Submit)" on Section 2
+      if (surveyIframeLoadCount === 1) {
+        if (els.surveySectionStatus) {
+          els.surveySectionStatus.style.background = '#eff6ff';
+          els.surveySectionStatus.style.borderColor = '#bfdbfe';
+          els.surveySectionStatus.style.color = '#1e40af';
+          els.surveySectionStatus.textContent = '📄 ส่วนที่ 1/2: กรอกข้อมูลทั่วไป แล้วเลื่อนลงมากดปุ่ม "ถัดไป" ในฟอร์ม';
+        }
+      } else if (surveyIframeLoadCount === 2) {
+        if (els.surveySectionStatus) {
+          els.surveySectionStatus.style.background = '#ecfdf5';
+          els.surveySectionStatus.style.borderColor = '#6ee7b7';
+          els.surveySectionStatus.style.color = '#065f46';
+          els.surveySectionStatus.textContent = '⭐ ส่วนที่ 2/2: ให้คะแนนความพึงพอใจ 10 ข้อ แล้วกดปุ่ม "ส่ง (Submit)" ด้านล่างฟอร์ม';
+        }
+        showToast('เข้าสู่ส่วนที่ 2/2: กรุณาให้คะแนนความพึงพอใจแล้วกดปุ่ม "ส่ง" ด้านล่างฟอร์มครับ', 'success');
+        if (els.surveyFormView && els.surveyFormView.scrollIntoView) {
+          els.surveyFormView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } else if (surveyIframeLoadCount >= 3) {
         setTimeout(() => {
           completeSurveyAndProceed();
-        }, 500);
+        }, 600);
       }
     });
   }
@@ -531,9 +562,26 @@
     });
   }
 
+  if (els.reopenSurveyBtn) {
+    els.reopenSurveyBtn.addEventListener('click', () => {
+      reopeningSurvey = true;
+      surveyIframeLoadCount = 0;
+      if (els.surveyIframe) {
+        els.surveyIframe.removeAttribute('data-loaded-url');
+      }
+      if (lastState) {
+        renderState(lastState);
+      }
+      if (els.surveyFormView && els.surveyFormView.scrollIntoView) {
+        els.surveyFormView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
   if (els.editProfileFromSurveyBtn) {
     els.editProfileFromSurveyBtn.addEventListener('click', () => {
       editingProfile = true;
+      reopeningSurvey = false;
       if (lastState) {
         renderState(lastState);
       }
@@ -823,6 +871,7 @@
     currentUser = getOrCreateDemoUser(true);
     els.schoolInput.value = '';
     editingProfile = false;
+    reopeningSurvey = false;
     surveyIframeLoadCount = 0;
     if (els.surveyIframe) {
       els.surveyIframe.removeAttribute('data-loaded-url');

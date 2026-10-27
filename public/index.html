@@ -78,17 +78,21 @@
       <div id="surveyFormView" style="display: none;">
         <div style="text-align: center; margin-bottom: 10px;">
           <div style="display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; margin-bottom: 4px;">
-            ขั้นตอนที่ 2/2 • แบบประเมินความพึงพอใจ
+            ขั้นตอนที่ 2/2 • แบบประเมินความพึงพอใจ (มี 2 ส่วน)
           </div>
           <h2 style="margin: 2px 0; font-size: 17px;">ทำแบบประเมินเพื่อปลดล็อกของรางวัล</h2>
           <p style="margin: 0; font-size: 12px; color: #64748b;">
-            กรอกฟอร์มด้านล่างแล้วกดปุ่ม <strong>"ส่ง (Submit)"</strong> ในฟอร์ม ระบบจะกลับมาหน้าแลกรางวัลอัตโนมัติครับ
+            กรอกฟอร์มทั้ง 2 ส่วนด้านล่าง (กด <strong>"ถัดไป"</strong> เพื่อไปส่วนที่ 2 แล้วกดปุ่ม <strong>"ส่ง"</strong>) ระบบจะไปหน้าแลกรางวัลอัตโนมัติครับ
           </p>
         </div>
 
-        <div id="surveyPrefillBadge" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #334155; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <div id="surveyPrefillBadge" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #334155; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
           <span id="surveyPrefillText">🏫 กรอกชื่อโรงเรียนและฐานที่สแกนให้อัตโนมัติแล้ว</span>
           <button id="editProfileFromSurveyBtn" type="button" style="background: none; border: none; color: #2563eb; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; white-space: nowrap;">แก้ไขโรงเรียน</button>
+        </div>
+
+        <div id="surveySectionStatus" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 10px; padding: 7px 12px; font-size: 12px; font-weight: 700; margin-bottom: 10px; text-align: center;">
+          📄 ส่วนที่ 1/2: กรอกข้อมูลทั่วไป แล้วเลื่อนลงมากดปุ่ม "ถัดไป" ในฟอร์ม
         </div>
 
         <div class="survey-iframe-wrapper">
@@ -133,6 +137,11 @@
         <p style="font-size: 11px; color: #dc2626; margin: 8px 0 0;">
           *กรุณากดเมื่ออยู่ต่อหน้าเจ้าหน้าที่จุดแลกของรางวัลเท่านั้น
         </p>
+        <div style="margin-top: 8px;">
+          <button id="reopenSurveyBtn" type="button" style="background: none; border: none; color: #2563eb; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
+            📝 เปิดทำแบบประเมินใหม่อีกครั้ง
+          </button>
+        </div>
       </div>
 
       <!-- Subview C: Already Redeemed -->

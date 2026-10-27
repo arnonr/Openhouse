@@ -162,6 +162,20 @@ test('Sanitizes dynamic HTML with escapeHtml in frontend scripts and supports li
   assert.ok(appJs.includes("urlParams.get('liff.state')"));
 });
 
+test('Handles 2-section Google Form without prematurely closing after section 1 Next button', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..');
+  const appJs = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
+  const indexHtml = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+
+  // Must NOT auto-complete on 2nd iframe load (which is Section 2 loading after clicking Next)
+  assert.ok(!appJs.includes('if (surveyIframeLoadCount >= 2)'));
+  // Must wait until 3rd iframe load (1 = Section 1, 2 = Section 2, 3 = Submit confirmation)
+  assert.ok(appJs.includes('if (surveyIframeLoadCount >= 3)'));
+  assert.ok(indexHtml.includes('ส่วนที่ 1/2'));
+});
+
 test('Supports Nginx Proxy Manager Custom Location subpath /openhouse', async () => {
   const store = createDb(':memory:');
   const app = createApp(store);
