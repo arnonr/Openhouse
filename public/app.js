@@ -51,6 +51,11 @@
     demoNewUserBtn: document.getElementById('demoNewUserBtn'),
     scannerModal: document.getElementById('scannerModal'),
     closeScannerBtn: document.getElementById('closeScannerBtn'),
+    qrReader: document.getElementById('qrReader'),
+    qrReaderFallbackBox: document.getElementById('qrReaderFallbackBox'),
+    qrFallbackCaptureBtn: document.getElementById('qrFallbackCaptureBtn'),
+    qrPhotoCaptureBtn: document.getElementById('qrPhotoCaptureBtn'),
+    qrCameraFileInput: document.getElementById('qrCameraFileInput'),
     manualCodeInput: document.getElementById('manualCodeInput'),
     manualCodeSubmitBtn: document.getElementById('manualCodeSubmitBtn'),
     redeemConfirmModal: document.getElementById('redeemConfirmModal'),
@@ -500,50 +505,248 @@
     renderState(data);
   });
 
-  // Scanner modal & camera
+  // Scanner modal & camera (keeps stream alive across scans so browser only asks permission ONCE)
+  let isProcessingQrScan = false;
+  let fileQrScanner = null;
+
+  function getActiveVideoTrack() {
+    const videoEl = document.querySelector('#qrReader video');
+    if (!videoEl || !videoEl.srcObject || typeof videoEl.srcObject.getVideoTracks !== 'function') {
+      return null;
+    }
+    const tracks = videoEl.srcObject.getVideoTracks();
+    return tracks.find((t) => t.readyState === 'live') || null;
+  }
+
   async function closeScannerModal() {
     els.scannerModal.classList.remove('open');
-    if (html5QrScanner) {
+    if (!html5QrScanner) return;
+
+    const liveTrack = getActiveVideoTrack();
+    if (liveTrack) {
       try {
-        await html5QrScanner.stop();
+        // State 2 = SCANNING: pause decoding loop without destroying MediaStream so permission is retained!
+        if (typeof html5QrScanner.getState === 'function' && html5QrScanner.getState() === 2) {
+          html5QrScanner.pause(false);
+        }
+        liveTrack.enabled = false;
+        return;
       } catch (_e) {}
-      html5QrScanner = null;
+    }
+
+    // Only stop/destroy if the stream track is no longer live
+    try {
+      await html5QrScanner.stop();
+    } catch (_e) {}
+    try {
+      html5QrScanner.clear();
+    } catch (_e) {}
+    html5QrScanner = null;
+  }
+
+  async function handleDecodedQrText(decodedText) {
+    if (isProcessingQrScan || !decodedText) return;
+    isProcessingQrScan = true;
+    try {
+      await closeScannerModal();
+      await performScan(decodedText);
+    } finally {
+      setTimeout(() => {
+        isProcessingQrScan = false;
+      }, 600);
+    }
+  }
+
+  async function startLiveCameraStream() {
+    const qrConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+    // 1. Standard mobile rear camera constraint (called directly inside user gesture)
+    try {
+      await html5QrScanner.start(
+        { facingMode: 'environment' },
+        qrConfig,
+        handleDecodedQrText,
+        () => {}
+      );
+      return true;
+    } catch (firstErr) {
+      // 2. Fallback: enumerate cameras and pick rear/last camera by deviceId
+      try {
+        const cameras = await window.Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const backCam =
+            cameras.find((c) => /back|rear|environment|หลัง/i.test(c.label || '')) ||
+            cameras[cameras.length - 1];
+          await html5QrScanner.start(
+            backCam.id,
+            qrConfig,
+            handleDecodedQrText,
+            () => {}
+          );
+          return true;
+        }
+      } catch (_secondErr) {}
+
+      // 3. Final fallback: any available camera
+      try {
+        await html5QrScanner.start(
+          { facingMode: 'user' },
+          qrConfig,
+          handleDecodedQrText,
+          () => {}
+        );
+        return true;
+      } catch (_thirdErr) {}
+
+      throw firstErr;
     }
   }
 
   els.openScannerBtn.addEventListener('click', async () => {
-    // If inside LINE mobile client and scanCodeV2 is available, try native scanner first
-    if (window.liff && window.liff.isInClient && window.liff.isInClient() && window.liff.scanCodeV2) {
+    els.scannerModal.classList.add('open');
+    if (els.qrReaderFallbackBox) {
+      els.qrReaderFallbackBox.style.display = 'none';
+    }
+    if (els.qrReader) {
+      els.qrReader.style.display = 'block';
+    }
+
+    // Fast path: if camera stream is already active from previous booth scan, resume immediately without asking permission again!
+    const liveTrack = getActiveVideoTrack();
+    if (html5QrScanner && liveTrack) {
       try {
-        const result = await window.liff.scanCodeV2();
-        if (result && result.value) {
-          await performScan(result.value);
-          return;
+        liveTrack.enabled = true;
+        if (typeof html5QrScanner.getState === 'function' && html5QrScanner.getState() === 3) {
+          html5QrScanner.resume();
         }
+        return;
       } catch (_e) {
-        // Fallback to web scanner modal
+        // Fall through to clean restart if resume fails
       }
     }
 
-    els.scannerModal.classList.add('open');
+    // Clean up any stale instance before starting fresh
+    if (html5QrScanner) {
+      try {
+        await html5QrScanner.stop();
+      } catch (_e) {}
+      try {
+        html5QrScanner.clear();
+      } catch (_e) {}
+      html5QrScanner = null;
+    }
+    if (els.qrReader) {
+      els.qrReader.innerHTML = '';
+    }
+
     if (window.Html5Qrcode) {
       try {
         html5QrScanner = new window.Html5Qrcode('qrReader');
-        await html5QrScanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          async (decodedText) => {
-            await closeScannerModal();
-            await performScan(decodedText);
-          },
-          () => {}
-        );
+        await startLiveCameraStream();
       } catch (_err) {
-        document.getElementById('qrReader').innerHTML =
-          '<div style="padding:12px;background:#f1f5f9;border-radius:8px;font-size:12px;color:#475569;text-align:center;">เบราว์เซอร์ไม่ได้เปิดสิทธิ์กล้อง สามารถกรอกรหัสฐานด้านล่าง หรือสแกนด้วยแอปกล้องมือถือโดยตรงได้เลยครับ</div>';
+        html5QrScanner = null;
+        if (els.qrReader) {
+          els.qrReader.innerHTML = '';
+          els.qrReader.style.display = 'none';
+        }
+        if (els.qrReaderFallbackBox) {
+          els.qrReaderFallbackBox.style.display = 'block';
+        }
       }
     }
   });
+
+  function resizeImageFileForQr(file, maxDim = 1280) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objUrl);
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error('Canvas blob failed'));
+            resolve(new File([blob], 'qr-resized.jpg', { type: 'image/jpeg' }));
+          },
+          'image/jpeg',
+          0.92
+        );
+      };
+      img.onerror = (err) => {
+        URL.revokeObjectURL(objUrl);
+        reject(err);
+      };
+      img.src = objUrl;
+    });
+  }
+
+  async function decodeQrFromImageFile(file) {
+    // 1. Try native BarcodeDetector first if supported by mobile browser
+    if ('BarcodeDetector' in window) {
+      try {
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const bitmap = await createImageBitmap(file);
+        const codes = await detector.detect(bitmap);
+        if (codes && codes.length > 0 && codes[0].rawValue) {
+          return codes[0].rawValue;
+        }
+      } catch (_e) {}
+    }
+
+    if (!window.Html5Qrcode) {
+      throw new Error('QR library not loaded');
+    }
+    if (!fileQrScanner) {
+      fileQrScanner = new window.Html5Qrcode('qrFileReader');
+    }
+
+    // 2. Try scanning the file directly
+    try {
+      return await fileQrScanner.scanFile(file, false);
+    } catch (_e) {
+      // 3. Try downscaling high-res mobile camera photos (e.g. 12MP) to 1280px for reliable decoding
+      const resized = await resizeImageFileForQr(file, 1280);
+      return await fileQrScanner.scanFile(resized, false);
+    }
+  }
+
+  function triggerNativeCameraFilePicker() {
+    if (els.qrCameraFileInput) {
+      els.qrCameraFileInput.value = '';
+      els.qrCameraFileInput.click();
+    }
+  }
+
+  if (els.qrPhotoCaptureBtn) {
+    els.qrPhotoCaptureBtn.addEventListener('click', triggerNativeCameraFilePicker);
+  }
+  if (els.qrFallbackCaptureBtn) {
+    els.qrFallbackCaptureBtn.addEventListener('click', triggerNativeCameraFilePicker);
+  }
+
+  if (els.qrCameraFileInput) {
+    els.qrCameraFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const decoded = await decodeQrFromImageFile(file);
+        await handleDecodedQrText(decoded);
+      } catch (_err) {
+        showToast('ไม่พบ QR Code ในภาพ กรุณาถ่ายให้เห็นกรอบ QR ชัดๆ หรือกรอกรหัสฐานด้านล่างครับ', 'error');
+      }
+    });
+  }
 
   els.closeScannerBtn.addEventListener('click', closeScannerModal);
 

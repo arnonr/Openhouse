@@ -172,11 +172,25 @@
         <h3 style="margin: 0; font-size: 17px;">📷 สแกน QR Code ประจำฐาน</h3>
         <button id="closeScannerBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
       </div>
-      <div id="qrReader" style="width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 12px;"></div>
+      <div id="qrReader" style="width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 10px;"></div>
+      <div id="qrReaderFallbackBox" style="display: none; padding: 14px 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; font-size: 12px; color: #92400e; text-align: center; margin-bottom: 12px;">
+        <div style="font-weight: 700; font-size: 13px; margin-bottom: 4px;">⚠️ ไม่สามารถเปิดกล้องสดในเบราว์เซอร์นี้ได้</div>
+        <div style="margin-bottom: 10px; color: #78350f;">คุณสามารถกดปุ่มด้านล่างเพื่อถ่ายรูปป้าย QR Code ด้วยกล้องมือถือได้ทันที (ไม่ต้องตั้งค่าสิทธิ์เบราว์เซอร์)</div>
+        <button id="qrFallbackCaptureBtn" type="button" class="btn btn-primary" style="font-size: 14px; padding: 11px 14px;">
+          📸 เปิดกล้องถ่ายรูปป้าย QR Code
+        </button>
+      </div>
+      <div id="qrQuickPhotoRow" style="margin-bottom: 12px; text-align: center;">
+        <button id="qrPhotoCaptureBtn" type="button" class="btn btn-outline" style="font-size: 13px; padding: 9px 12px;">
+          📸 หรือกดถ่ายภาพ QR Code ด้วยกล้องมือถือ
+        </button>
+        <input id="qrCameraFileInput" type="file" accept="image/*" capture="environment" style="display: none;" />
+        <div id="qrFileReader" style="display: none;"></div>
+      </div>
       <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 6px;">หรือกรอกรหัสประจำฐาน (กรณีกล้องไม่ทำงาน):</label>
+        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 6px;">หรือกรอกรหัสประจำฐาน (ดูที่มุมป้าย QR เช่น ST-01):</label>
         <div style="display: flex; gap: 8px;">
-          <input id="manualCodeInput" type="text" class="text-input" placeholder="เช่น ST-01-ROBOT" />
+          <input id="manualCodeInput" type="text" class="text-input" placeholder="เช่น ST-01" />
           <button id="manualCodeSubmitBtn" class="btn btn-line" style="width: auto; white-space: nowrap;">ยืนยัน</button>
         </div>
       </div>
