@@ -58,6 +58,12 @@
     qrCameraFileInput: document.getElementById('qrCameraFileInput'),
     manualCodeInput: document.getElementById('manualCodeInput'),
     manualCodeSubmitBtn: document.getElementById('manualCodeSubmitBtn'),
+    scanSuccessModal: document.getElementById('scanSuccessModal'),
+    scanPopupBadgeIcon: document.getElementById('scanPopupBadgeIcon'),
+    scanPopupStatusPill: document.getElementById('scanPopupStatusPill'),
+    scanPopupBoothName: document.getElementById('scanPopupBoothName'),
+    scanPopupProgress: document.getElementById('scanPopupProgress'),
+    closeScanPopupBtn: document.getElementById('closeScanPopupBtn'),
     redeemConfirmModal: document.getElementById('redeemConfirmModal'),
     cancelRedeemModalBtn: document.getElementById('cancelRedeemModalBtn'),
     proceedRedeemModalBtn: document.getElementById('proceedRedeemModalBtn')
@@ -357,6 +363,54 @@
     }
   }
 
+  let scanPopupTimer = null;
+
+  function showScanSuccessPopup(data) {
+    if (!els.scanSuccessModal) return;
+    const state = data.state || {};
+    const booth = data.booth || {};
+    const reqStamps = state.requiredStamps || 3;
+    const stampedCount = state.stampedCount || 0;
+
+    if (els.scanPopupBadgeIcon) {
+      els.scanPopupBadgeIcon.textContent = state.isCompleted && !data.alreadyStamped
+        ? '🎉'
+        : (booth.icon || '✅');
+    }
+    if (els.scanPopupStatusPill) {
+      els.scanPopupStatusPill.textContent = data.alreadyStamped
+        ? '✓ เคยประทับตราฐานนี้แล้ว'
+        : '✓ ประทับตราฐานสำเร็จ!';
+    }
+    if (els.scanPopupBoothName) {
+      els.scanPopupBoothName.textContent = booth.name || '';
+    }
+    if (els.scanPopupProgress) {
+      els.scanPopupProgress.textContent = state.isCompleted
+        ? `🎉 สะสมครบ ${stampedCount} / ${reqStamps} ฐานแล้ว! พร้อมแลกรับของรางวัล`
+        : `สะสมแสตมป์แล้ว ${stampedCount} / ${reqStamps} ฐาน`;
+    }
+
+    els.scanSuccessModal.classList.add('open');
+    if (scanPopupTimer) clearTimeout(scanPopupTimer);
+    scanPopupTimer = setTimeout(() => {
+      els.scanSuccessModal.classList.remove('open');
+      if (state.isCompleted && els.completionSection && els.completionSection.scrollIntoView) {
+        els.completionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 2400);
+  }
+
+  if (els.closeScanPopupBtn) {
+    els.closeScanPopupBtn.addEventListener('click', () => {
+      if (scanPopupTimer) clearTimeout(scanPopupTimer);
+      els.scanSuccessModal.classList.remove('open');
+      if (lastState && lastState.isCompleted && els.completionSection && els.completionSection.scrollIntoView) {
+        els.completionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
   async function performScan(rawCode) {
     const boothCode = extractBoothCodeFromInput(rawCode);
     if (!boothCode) return;
@@ -378,12 +432,19 @@
       return;
     }
 
+    if (navigator.vibrate) {
+      try {
+        navigator.vibrate(100);
+      } catch (_e) {}
+    }
+
     if (data.alreadyStamped) {
-      showToast(`คุณเคยประทับตรา "${data.booth.name}" ไปแล้วครับ`, 'success');
+      showToast(`✓ คุณเคยประทับตรา "${data.booth.name}" ไปแล้วครับ`, 'success');
     } else {
-      showToast(`🎉 ประทับตรา "${data.booth.name}" สำเร็จ!`, 'success');
+      showToast(`🎉 ประทับตรา "${data.booth.name}" สำเร็จ! (${data.state.stampedCount}/${data.state.requiredStamps} ฐาน)`, 'success');
     }
     renderState(data.state);
+    showScanSuccessPopup(data);
   }
 
   // Grade chip selection
