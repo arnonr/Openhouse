@@ -195,6 +195,16 @@ function createApp(store, config = {}) {
     res.json(updated);
   });
 
+  router.post('/api/admin/participants/reset', requireAdmin, (_req, res) => {
+    store.clearAllParticipants();
+    res.json({ cleared: true });
+  });
+
+  router.delete('/api/admin/participants/:lineUserId', requireAdmin, (req, res) => {
+    const deleted = store.deleteParticipant(req.params.lineUserId);
+    res.json({ deleted });
+  });
+
   router.post('/api/admin/participants/:lineUserId/toggle-redeem', requireAdmin, (req, res) => {
     try {
       const { isRedeemed } = req.body || {};

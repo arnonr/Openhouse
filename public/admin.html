@@ -420,7 +420,12 @@
               <h2 class="panel-title">📋 รายชื่อนักเรียนที่เข้าร่วมงาน</h2>
               <p class="panel-subtitle">ตรวจสอบความคืบหน้าและกดยืนยันสถานะรับของรางวัล</p>
             </div>
-            <input id="searchParticipantInput" type="text" class="text-input" placeholder="🔍 ค้นหาชื่อ หรือ โรงเรียน..." style="max-width: 250px;" />
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <input id="searchParticipantInput" type="text" class="text-input" placeholder="🔍 ค้นหาชื่อ หรือ โรงเรียน..." style="max-width: 220px;" />
+              <button id="clearParticipantsBtn" type="button" class="action-btn danger" title="ล้างรายชื่อผู้เข้าร่วมและประวัติการสแกนทดสอบทั้งหมด (ไม่ลบฐานกิจกรรม)">
+                🗑️ ล้างข้อมูลทดสอบทั้งหมด
+              </button>
+            </div>
           </div>
 
           <div style="overflow-x: auto;">

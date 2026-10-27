@@ -456,6 +456,19 @@ function createDb(dbPath = ':memory:') {
     return getParticipantState(lineUserId);
   }
 
+  function deleteParticipant(lineUserId) {
+    const uid = String(lineUserId || '').trim();
+    if (!uid) return false;
+    db.prepare('DELETE FROM stamps WHERE line_user_id = ?').run(uid);
+    const info = db.prepare('DELETE FROM participants WHERE line_user_id = ?').run(uid);
+    return info.changes > 0;
+  }
+
+  function clearAllParticipants() {
+    db.exec('DELETE FROM stamps; DELETE FROM participants;');
+    return true;
+  }
+
   function getAdminOverview() {
     const allBooths = listBooths({ activeOnly: false });
     const activeBooths = allBooths.filter((b) => b.is_active === 1);
@@ -572,6 +585,8 @@ function createDb(dbPath = ':memory:') {
     completeSurvey,
     redeemReward,
     toggleRedeemAdmin,
+    deleteParticipant,
+    clearAllParticipants,
     getAdminOverview,
     exportCsv
   };

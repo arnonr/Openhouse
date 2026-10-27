@@ -33,6 +33,7 @@
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
     settingsSavedMsg: document.getElementById('settingsSavedMsg'),
     searchParticipantInput: document.getElementById('searchParticipantInput'),
+    clearParticipantsBtn: document.getElementById('clearParticipantsBtn'),
     participantsTableBody: document.getElementById('participantsTableBody'),
     boothModal: document.getElementById('boothModal'),
     boothModalTitle: document.getElementById('boothModalTitle'),
@@ -247,9 +248,14 @@
         <td><strong>${Number(p.stamped_count) || 0} / ${Number(p.required_stamps) || 3}</strong> ฐาน <span style="font-size:11px;color:#64748b;">(จาก ${Number(p.total_active_booths) || 0})</span></td>
         <td>${statusBadge}</td>
         <td>
-          <button type="button" class="action-btn toggle-redeem-btn" style="padding:5px 10px;font-size:12px;">
-            ${p.is_redeemed ? 'ยกเลิกสถานะรับของ' : 'กดยืนยันรับของให้'}
-          </button>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button type="button" class="action-btn toggle-redeem-btn" style="padding:5px 10px;font-size:12px;">
+              ${p.is_redeemed ? 'ยกเลิกสถานะรับของ' : 'กดยืนยันรับของให้'}
+            </button>
+            <button type="button" class="action-btn danger del-participant-btn" style="padding:5px 8px;font-size:12px;" title="ลบผู้เข้าร่วมคนนี้">
+              ลบ
+            </button>
+          </div>
         </td>
       `;
 
@@ -259,6 +265,15 @@
           body: JSON.stringify({ isRedeemed: !p.is_redeemed })
         });
         showAdminToast(`อัปเดตสถานะของ ${p.display_name} เรียบร้อยแล้ว`);
+        await fetchOverview();
+      });
+
+      tr.querySelector('.del-participant-btn').addEventListener('click', async () => {
+        if (!confirm(`ต้องการลบข้อมูลการสแกนของ "${p.display_name}" ใช่หรือไม่?`)) return;
+        await apiAdmin(`/api/admin/participants/${encodeURIComponent(p.line_user_id)}`, {
+          method: 'DELETE'
+        });
+        showAdminToast(`ลบข้อมูลของ ${p.display_name} เรียบร้อยแล้ว`);
         await fetchOverview();
       });
 
@@ -364,6 +379,17 @@
   });
 
   els.searchParticipantInput.addEventListener('input', renderParticipantsTable);
+
+  if (els.clearParticipantsBtn) {
+    els.clearParticipantsBtn.addEventListener('click', async () => {
+      if (!confirm('⚠️ ยืนยันการล้างข้อมูลผู้เข้าร่วมและประวัติการสแกนทดสอบทั้งหมดใช่หรือไม่?\n(รายชื่อฐานกิจกรรมทั้ง 9 ฐานและการตั้งค่าหน้างานจะไม่ถูกลบ)')) {
+        return;
+      }
+      await apiAdmin('/api/admin/participants/reset', { method: 'POST' });
+      showAdminToast('🗑️ ล้างข้อมูลผู้เข้าร่วมและยอดสแกนทั้งหมดเรียบร้อยแล้ว');
+      await fetchOverview();
+    });
+  }
 
   if (adminPassword) {
     fetchOverview();
