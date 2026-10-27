@@ -46,14 +46,14 @@
     <!-- Notification Banner -->
     <div id="toastBanner" class="toast-banner"></div>
 
-    <!-- Step 2 & 3 Card: Profile Form or Redemption Card (Shown when all booths stamped) -->
+    <!-- Step 2 & 3 Card: Profile Form, Google Form Survey, or Redemption Card (Shown when required booths stamped) -->
     <section id="completionSection" class="card" style="display: none; border: 2px solid #2563eb;">
       <!-- Subview A: Short 2-Field Profile Form -->
       <div id="profileFormView" style="display: none;">
         <div style="text-align: center; margin-bottom: 14px;">
           <div style="font-size: 34px;">🎉</div>
           <h2 style="margin: 4px 0; font-size: 18px;">สะสมแสตมป์ครบตามเกณฑ์แล้ว!</h2>
-          <p style="margin: 0; font-size: 12px; color: #64748b;">กรอกข้อมูลสั้นๆ เพียง 2 ข้อเพื่อเปิดหน้าแลกรับของรางวัล</p>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">ขั้นตอนที่ 1/2: กรอกข้อมูลสั้นๆ เพื่อนำชื่อโรงเรียนและฐานที่เข้าชมไปใส่ในแบบประเมินให้อัตโนมัติ</p>
         </div>
 
         <div style="margin-bottom: 12px;">
@@ -71,10 +71,53 @@
           <input id="schoolInput" type="text" class="text-input" placeholder="เช่น รร.เตรียมวิศวกรรมศาสตร์ มจพ." />
         </div>
 
-        <button id="saveProfileBtn" class="btn btn-primary">🎁 บันทึกและไปหน้าแลกของรางวัล</button>
+        <button id="saveProfileBtn" class="btn btn-primary">📝 ถัดไป: ทำแบบประเมินเพื่อรับรางวัล</button>
       </div>
 
-      <!-- Subview B: Ready to Redeem in front of Staff -->
+      <!-- Subview B: Embedded Google Form Evaluation -->
+      <div id="surveyFormView" style="display: none;">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <div style="display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; margin-bottom: 4px;">
+            ขั้นตอนที่ 2/2 • แบบประเมินความพึงพอใจ
+          </div>
+          <h2 style="margin: 2px 0; font-size: 17px;">ทำแบบประเมินเพื่อปลดล็อกของรางวัล</h2>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">
+            กรอกฟอร์มด้านล่างแล้วกดปุ่ม <strong>"ส่ง (Submit)"</strong> ในฟอร์ม ระบบจะกลับมาหน้าแลกรางวัลอัตโนมัติครับ
+          </p>
+        </div>
+
+        <div id="surveyPrefillBadge" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #334155; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span id="surveyPrefillText">🏫 กรอกชื่อโรงเรียนและฐานที่สแกนให้อัตโนมัติแล้ว</span>
+          <button id="editProfileFromSurveyBtn" type="button" style="background: none; border: none; color: #2563eb; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; white-space: nowrap;">แก้ไขโรงเรียน</button>
+        </div>
+
+        <div class="survey-iframe-wrapper">
+          <div id="surveyLoadingOverlay" class="survey-loading-overlay">
+            ⏳ กำลังโหลดแบบประเมิน Google Form...
+          </div>
+          <iframe
+            id="surveyIframe"
+            title="แบบประเมินความพึงพอใจ KMUTNB Techno Park Open House"
+            class="survey-iframe"
+            frameborder="0"
+            marginheight="0"
+            marginwidth="0"
+          >กำลังโหลด…</iframe>
+        </div>
+
+        <div style="margin-top: 12px; text-align: center;">
+          <button id="manualSurveyDoneBtn" type="button" class="btn btn-line" style="font-size: 14px; padding: 11px 14px;">
+            ✅ กดปุ่ม "ส่ง" ในฟอร์มเรียบร้อยแล้ว (ไปหน้ารับรางวัล)
+          </button>
+          <div style="margin-top: 8px;">
+            <a id="externalSurveyLink" href="#" target="_blank" rel="noopener" style="font-size: 12px; color: #64748b; text-decoration: underline;">
+              หากฟอร์มด้านบนไม่แสดงผล กดที่นี่เพื่อเปิด Google Form ในแท็บใหม่ ↗
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subview C: Ready to Redeem in front of Staff -->
       <div id="redeemReadyView" style="display: none; text-align: center;">
         <div style="font-size: 11px; font-weight: 800; color: #d97706; letter-spacing: 0.5px;">KMUTNB TECHNO PARK OPEN HOUSE</div>
         <h2 style="margin: 6px 0 4px; font-size: 20px;">สิทธิ์แลกรับของรางวัล</h2>

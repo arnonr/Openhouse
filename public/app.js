@@ -12,6 +12,9 @@
   };
   let selectedGrade = 'ม.ปลาย';
   let html5QrScanner = null;
+  let editingProfile = false;
+  let surveyIframeLoadCount = 0;
+  let lastState = null;
 
   const els = {
     eventTitle: document.getElementById('eventTitle'),
@@ -26,6 +29,13 @@
     stampGrid: document.getElementById('stampGrid'),
     completionSection: document.getElementById('completionSection'),
     profileFormView: document.getElementById('profileFormView'),
+    surveyFormView: document.getElementById('surveyFormView'),
+    surveyPrefillText: document.getElementById('surveyPrefillText'),
+    editProfileFromSurveyBtn: document.getElementById('editProfileFromSurveyBtn'),
+    surveyLoadingOverlay: document.getElementById('surveyLoadingOverlay'),
+    surveyIframe: document.getElementById('surveyIframe'),
+    manualSurveyDoneBtn: document.getElementById('manualSurveyDoneBtn'),
+    externalSurveyLink: document.getElementById('externalSurveyLink'),
     redeemReadyView: document.getElementById('redeemReadyView'),
     redeemedDoneView: document.getElementById('redeemedDoneView'),
     gradeOptions: document.getElementById('gradeOptions'),
@@ -143,8 +153,84 @@
     return text;
   }
 
+  function mapBoothToGoogleFormOption(booth) {
+    const text = `${booth.code || ''} ${booth.name || ''}`;
+    if (text.includes('5G') || text.includes('ไร้สาย')) {
+      return 'ศูนย์ปฏิบัติการนวัตกรรมไร้สายล้ำหน้ายุค 5G (ชั้น 1)';
+    }
+    if (text.includes('สิ่งแวดล้อม') || text.includes('พลังงาน')) {
+      return 'ศูนย์ปฏิบัติการสิ่งแวดล้อมและการอนุรักษ์พลังงาน (ชั้น 1)';
+    }
+    if (text.includes('ยานยนต์') || text.includes('ขนส่งทางราง')) {
+      return 'ศูนย์ปฏิบัติการเทคโนโลยีนวัตกรรมยานยนต์สมัยใหม่และระบบขนส่งทางราง (ชั้น 1)';
+    }
+    if (text.includes('อากาศยาน') || text.includes('ป้องกันประเทศ')) {
+      return 'ศูนย์ปฏิบัติการเทคโนโลยีอากาศยานและการป้องกันประเทศ (ชั้น 1)';
+    }
+    if (text.includes('อัตโนมัติ') || text.includes('หุ่นยนต์')) {
+      return 'ศูนย์ปฏิบัติการระบบอัตโนมัติและหุ่นยนต์ (ชั้น 2)';
+    }
+    if (text.includes('ชีวภาพ')) {
+      return 'ศูนย์ปฏิบัติการเทคโนโลยีชีวภาพและเคมีชีวภาพ (ชั้น 7)';
+    }
+    if (text.includes('เรดาร์')) {
+      return 'ศูนย์ปฏิบัติการเทคโนโลยีเรดาร์ (ชั้น 8)';
+    }
+    if (text.includes('เครื่องมือแพทย์') || text.includes('แพทย์')) {
+      return 'ศูนย์ปฏิบัติการเทคโนโลยีและนวัตกรรมเครื่องมือแพทย์ (ชั้น 9)';
+    }
+    if (text.includes('อวกาศ')) {
+      return 'สถาบันเทคโนโลยีอวกาศนานาชาติเพื่อการพัฒนาเศรษฐกิจ (ชั้น 10)';
+    }
+    if (text.includes('อเนกประสงค์')) {
+      return 'บูธบริเวณอาคารอเนกประสงค์';
+    }
+    return null;
+  }
+
+  function buildGoogleFormUrls(rawFormUrl, state) {
+    let baseUrl = String(rawFormUrl || '').trim();
+    if (!baseUrl) return null;
+
+    if (baseUrl.includes('18pHeTuocQ8r1J59OKouHnpaMoTKNWbodkqh7L5L6q6o')) {
+      baseUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfIdO6uB31VYQSoWR7TwZHEOKB5beq7RcUfI5c21B8mONq2Rw/viewform';
+    } else {
+      baseUrl = baseUrl.replace(/\/(edit|formResponse)(\?.*)?$/i, '/viewform');
+    }
+
+    const baseWithoutQuery = baseUrl.split('?')[0];
+    const params = new URLSearchParams();
+    params.set('usp', 'pp_url');
+
+    if (state.participant && state.participant.school_name) {
+      params.set('entry.895062772', state.participant.school_name);
+    }
+
+    const isSat = new Date().getDay() === 6;
+    params.set('entry.950814337', isSat ? 'วันเสาร์ที่ 7 พฤศจิกายน 2569' : 'วันศุกร์ที่ 6 พฤศจิกายน 2569');
+
+    const addedCenters = new Set();
+    (state.booths || []).forEach((b) => {
+      if (b.stamped) {
+        const mapped = mapBoothToGoogleFormOption(b);
+        if (mapped && !addedCenters.has(mapped)) {
+          addedCenters.add(mapped);
+          params.append('entry.318598466', mapped);
+        }
+      }
+    });
+
+    const externalUrl = `${baseWithoutQuery}?${params.toString()}`;
+    const embedParams = new URLSearchParams(params);
+    embedParams.set('embedded', 'true');
+    const embedUrl = `${baseWithoutQuery}?${embedParams.toString()}`;
+
+    return { embedUrl, externalUrl, prefilledCentersCount: addedCenters.size };
+  }
+
   function renderState(state) {
     if (!state) return;
+    lastState = state;
 
     if (state.settings) {
       els.eventTitle.textContent = state.settings.event_title || 'KMUTNB Techno Park Open House';
@@ -197,20 +283,53 @@
     // Completion & Redemption section
     if (state.isCompleted) {
       els.completionSection.style.display = 'block';
+      const rawFormUrl = state.settings && state.settings.google_form_url
+        ? String(state.settings.google_form_url).trim()
+        : '';
+
       if (state.isRedeemed) {
         els.profileFormView.style.display = 'none';
+        if (els.surveyFormView) els.surveyFormView.style.display = 'none';
         els.redeemReadyView.style.display = 'none';
         els.redeemedDoneView.style.display = 'block';
         const timeFormatted = p.redeemed_at
           ? new Date(p.redeemed_at).toLocaleTimeString('th-TH', { hour12: false })
           : '';
         els.redeemedTimeText.textContent = `ยืนยันรับรางวัลเมื่อเวลา ${timeFormatted} • ${p.display_name} (${p.school_name})`;
-      } else if (!state.hasProfile) {
+      } else if (!state.hasProfile || editingProfile) {
         els.profileFormView.style.display = 'block';
+        if (els.surveyFormView) els.surveyFormView.style.display = 'none';
         els.redeemReadyView.style.display = 'none';
         els.redeemedDoneView.style.display = 'none';
+        if (p.school_name && !els.schoolInput.value) {
+          els.schoolInput.value = p.school_name;
+        }
+      } else if (!state.hasSurvey && rawFormUrl && els.surveyFormView) {
+        els.profileFormView.style.display = 'none';
+        els.surveyFormView.style.display = 'block';
+        els.redeemReadyView.style.display = 'none';
+        els.redeemedDoneView.style.display = 'none';
+
+        const urls = buildGoogleFormUrls(rawFormUrl, state);
+        if (urls) {
+          if (els.surveyPrefillText) {
+            els.surveyPrefillText.textContent = `🏫 กรอกอัตโนมัติ: ${p.school_name} (${urls.prefilledCentersCount} ฐานที่สแกน)`;
+          }
+          if (els.externalSurveyLink) {
+            els.externalSurveyLink.href = urls.externalUrl;
+          }
+          if (els.surveyIframe && els.surveyIframe.getAttribute('data-loaded-url') !== urls.embedUrl) {
+            surveyIframeLoadCount = 0;
+            if (els.surveyLoadingOverlay) {
+              els.surveyLoadingOverlay.style.display = 'flex';
+            }
+            els.surveyIframe.setAttribute('data-loaded-url', urls.embedUrl);
+            els.surveyIframe.src = urls.embedUrl;
+          }
+        }
       } else {
         els.profileFormView.style.display = 'none';
+        if (els.surveyFormView) els.surveyFormView.style.display = 'none';
         els.redeemReadyView.style.display = 'block';
         els.redeemedDoneView.style.display = 'none';
         els.redeemUserInfo.textContent = `${p.display_name} • ${p.grade_level} • ${p.school_name}`;
@@ -293,9 +412,68 @@
       showToast(data.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
       return;
     }
-    showToast('บันทึกข้อมูลเรียบร้อย! แสดงหน้าจอนี้ที่จุดรับของรางวัลได้เลยครับ', 'success');
+    editingProfile = false;
+    if (els.surveyIframe) {
+      els.surveyIframe.removeAttribute('data-loaded-url');
+    }
+    const hasForm = data.settings && String(data.settings.google_form_url || '').trim();
+    if (hasForm && !data.hasSurvey) {
+      showToast('กรอกชื่อโรงเรียนและฐานที่เข้าชมในฟอร์มให้อัตโนมัติแล้ว! ทำแบบประเมินด้านล่างได้เลยครับ', 'success');
+    } else {
+      showToast('บันทึกข้อมูลเรียบร้อย! แสดงหน้าจอนี้ที่จุดรับของรางวัลได้เลยครับ', 'success');
+    }
     renderState(data);
   });
+
+  async function completeSurveyAndProceed() {
+    const res = await fetch(`${BASE_PATH}/api/survey-complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lineUserId: currentUser.lineUserId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.message || 'ไม่สามารถบันทึกสถานะแบบประเมินได้', 'error');
+      return;
+    }
+    showToast('🎉 ขอบคุณที่ทำแบบประเมิน! แสดงหน้าจอนี้ที่จุดรับของรางวัลได้เลยครับ', 'success');
+    renderState(data);
+    if (els.completionSection && els.completionSection.scrollIntoView) {
+      els.completionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  if (els.surveyIframe) {
+    els.surveyIframe.addEventListener('load', () => {
+      if (!els.surveyIframe.getAttribute('src')) return;
+      surveyIframeLoadCount += 1;
+      if (els.surveyLoadingOverlay) {
+        els.surveyLoadingOverlay.style.display = 'none';
+      }
+      // 1st load = Google Form viewform loaded; 2nd load = formResponse confirmation loaded after clicking Submit
+      if (surveyIframeLoadCount >= 2) {
+        setTimeout(() => {
+          completeSurveyAndProceed();
+        }, 500);
+      }
+    });
+  }
+
+  if (els.manualSurveyDoneBtn) {
+    els.manualSurveyDoneBtn.addEventListener('click', () => {
+      completeSurveyAndProceed();
+    });
+  }
+
+  if (els.editProfileFromSurveyBtn) {
+    els.editProfileFromSurveyBtn.addEventListener('click', () => {
+      editingProfile = true;
+      if (lastState) {
+        renderState(lastState);
+      }
+      els.schoolInput.focus();
+    });
+  }
 
   // Redeem modal
   els.confirmRedeemBtn.addEventListener('click', () => {
@@ -380,6 +558,12 @@
   els.demoNewUserBtn.addEventListener('click', async () => {
     currentUser = getOrCreateDemoUser(true);
     els.schoolInput.value = '';
+    editingProfile = false;
+    surveyIframeLoadCount = 0;
+    if (els.surveyIframe) {
+      els.surveyIframe.removeAttribute('data-loaded-url');
+      els.surveyIframe.removeAttribute('src');
+    }
     showToast(`สลับเป็นผู้ใช้งานทดสอบใหม่: ${currentUser.displayName}`, 'success');
     await loadMyState();
   });

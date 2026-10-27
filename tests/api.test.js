@@ -72,13 +72,24 @@ test('Student API workflow, cooldown 429, validation 400, and Admin auth protect
     });
     assert.equal(badRedeem.status, 400);
 
-    // Save profile and redeem
+    // Save profile, complete survey, and redeem
     const profRes = await fetch(`${baseUrl}/api/profile`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ lineUserId: 'U999', gradeLevel: 'ม.ปลาย', schoolName: 'รร.วัดเขมาภิรตาราม' })
     });
     assert.equal(profRes.status, 200);
+    const profState = await profRes.json();
+    assert.equal(profState.hasSurvey, false);
+
+    const surveyRes = await fetch(`${baseUrl}/api/survey-complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lineUserId: 'U999' })
+    });
+    assert.equal(surveyRes.status, 200);
+    const surveyState = await surveyRes.json();
+    assert.equal(surveyState.hasSurvey, true);
 
     const redRes = await fetch(`${baseUrl}/api/redeem`, {
       method: 'POST',

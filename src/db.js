@@ -74,7 +74,8 @@ const DEFAULT_SETTINGS = {
   event_subtitle: 'อุทยานเทคโนโลยี มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ',
   cooldown_seconds: '60',
   required_stamps: '3',
-  prize_description: 'เลือกสแกนสะสมแสตมป์ครบ 3 ฐาน รับของที่ระลึกสุดพิเศษที่จุดลงทะเบียน!'
+  prize_description: 'เลือกสแกนสะสมแสตมป์ครบ 3 ฐาน รับของที่ระลึกสุดพิเศษที่จุดลงทะเบียน!',
+  google_form_url: 'https://docs.google.com/forms/d/e/1FAIpQLSfIdO6uB31VYQSoWR7TwZHEOKB5beq7RcUfI5c21B8mONq2Rw/viewform'
 };
 
 function createError(code, message, extra = {}) {
@@ -121,6 +122,7 @@ function createDb(dbPath = ':memory:') {
       picture_url TEXT DEFAULT '',
       grade_level TEXT DEFAULT '',
       school_name TEXT DEFAULT '',
+      survey_completed_at TEXT DEFAULT NULL,
       is_redeemed INTEGER DEFAULT 0,
       redeemed_at TEXT DEFAULT NULL,
       created_at TEXT NOT NULL,
@@ -143,6 +145,12 @@ function createDb(dbPath = ':memory:') {
       value TEXT NOT NULL
     );
   `);
+
+  // Safe migration for existing databases missing survey_completed_at
+  const participantCols = db.prepare('PRAGMA table_info(participants)').all();
+  if (!participantCols.some((c) => c.name === 'survey_completed_at')) {
+    db.exec('ALTER TABLE participants ADD COLUMN survey_completed_at TEXT DEFAULT NULL;');
+  }
 
   function seedDefaultBooths({ replaceExisting = false } = {}) {
     if (replaceExisting) {
@@ -307,6 +315,7 @@ function createDb(dbPath = ':memory:') {
     const requiredStamps = totalBooths > 0 ? Math.min(Number(settings.required_stamps) || 3, totalBooths) : 0;
     const isCompleted = requiredStamps > 0 && stampedCount >= requiredStamps;
     const hasProfile = Boolean(participant.grade_level && participant.school_name);
+    const hasSurvey = Boolean(participant.survey_completed_at);
 
     return {
       participant,
@@ -316,6 +325,7 @@ function createDb(dbPath = ':memory:') {
       totalBooths,
       isCompleted,
       hasProfile,
+      hasSurvey,
       isRedeemed: Boolean(participant.is_redeemed),
       settings
     };
@@ -400,6 +410,18 @@ function createDb(dbPath = ':memory:') {
     return getParticipantState(lineUserId);
   }
 
+  function completeSurvey(lineUserId) {
+    const state = getParticipantState(lineUserId);
+    const nowIso = new Date().toISOString();
+    db.prepare(`
+      UPDATE participants
+      SET survey_completed_at = COALESCE(survey_completed_at, ?), updated_at = ?
+      WHERE line_user_id = ?
+    `).run(nowIso, nowIso, state.participant.line_user_id);
+
+    return getParticipantState(lineUserId);
+  }
+
   function redeemReward(lineUserId) {
     const state = getParticipantState(lineUserId);
     if (!state.isCompleted) {
@@ -415,9 +437,9 @@ function createDb(dbPath = ':memory:') {
     const nowIso = new Date().toISOString();
     db.prepare(`
       UPDATE participants
-      SET is_redeemed = 1, redeemed_at = ?, updated_at = ?
+      SET is_redeemed = 1, redeemed_at = ?, survey_completed_at = COALESCE(survey_completed_at, ?), updated_at = ?
       WHERE line_user_id = ?
-    `).run(nowIso, nowIso, state.participant.line_user_id);
+    `).run(nowIso, nowIso, nowIso, state.participant.line_user_id);
 
     return getParticipantState(lineUserId);
   }
@@ -547,6 +569,7 @@ function createDb(dbPath = ':memory:') {
     getParticipantState,
     scanBooth,
     saveProfile,
+    completeSurvey,
     redeemReward,
     toggleRedeemAdmin,
     getAdminOverview,

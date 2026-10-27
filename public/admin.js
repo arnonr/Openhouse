@@ -29,6 +29,7 @@
     settingPrizeDesc: document.getElementById('settingPrizeDesc'),
     settingRequiredStamps: document.getElementById('settingRequiredStamps'),
     settingCooldown: document.getElementById('settingCooldown'),
+    settingGoogleFormUrl: document.getElementById('settingGoogleFormUrl'),
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
     settingsSavedMsg: document.getElementById('settingsSavedMsg'),
     searchParticipantInput: document.getElementById('searchParticipantInput'),
@@ -153,6 +154,9 @@
       els.settingRequiredStamps.value = data.settings.required_stamps ?? 3;
     }
     els.settingCooldown.value = data.settings.cooldown_seconds ?? 60;
+    if (els.settingGoogleFormUrl) {
+      els.settingGoogleFormUrl.value = data.settings.google_form_url || '';
+    }
 
     // Render Booths
     els.boothListContainer.innerHTML = '';
@@ -347,7 +351,8 @@
         event_title: els.settingEventTitle.value.trim(),
         prize_description: els.settingPrizeDesc.value.trim(),
         required_stamps: Math.max(1, Number(els.settingRequiredStamps ? els.settingRequiredStamps.value : 3) || 3),
-        cooldown_seconds: Number(els.settingCooldown.value) || 0
+        cooldown_seconds: Number(els.settingCooldown.value) || 0,
+        google_form_url: els.settingGoogleFormUrl ? els.settingGoogleFormUrl.value.trim() : ''
       })
     });
     els.settingsSavedMsg.textContent = '✓ บันทึกการตั้งค่าเรียบร้อยแล้ว';

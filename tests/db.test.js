@@ -9,6 +9,7 @@ test('seeds 9 default KMUTNB Techno Park booths and default settings', () => {
   const settings = store.getSettings();
   assert.equal(Number(settings.cooldown_seconds), 60);
   assert.equal(Number(settings.required_stamps), 3);
+  assert.ok(settings.google_form_url.includes('docs.google.com/forms'));
 });
 
 test('scans booths, handles idempotent repeat scans, enforces cooldown, and completes flow', () => {
@@ -87,8 +88,14 @@ test('unlocks completion after any 3 booths out of 9 booths and still allows sca
   assert.equal(state.stampedCount, 3);
   assert.equal(state.isCompleted, true);
 
-  // Can save profile and redeem at 3 stamps
-  store.saveProfile({ lineUserId: 'U002', gradeLevel: 'ม.ปลาย', schoolName: 'รร.สตรีนนทบุรี' });
+  // Can save profile, complete Google Form survey, and redeem at 3 stamps
+  const afterProfile = store.saveProfile({ lineUserId: 'U002', gradeLevel: 'ม.ปลาย', schoolName: 'รร.สตรีนนทบุรี' });
+  assert.equal(afterProfile.hasProfile, true);
+  assert.equal(afterProfile.hasSurvey, false);
+
+  const afterSurvey = store.completeSurvey('U002');
+  assert.equal(afterSurvey.hasSurvey, true);
+
   store.redeemReward('U002');
   assert.equal(store.getParticipantState('U002').isRedeemed, true);
 

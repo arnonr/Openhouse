@@ -83,6 +83,17 @@ function createApp(store, config = {}) {
     }
   });
 
+  // Mark Google Form evaluation survey as completed
+  router.post('/api/survey-complete', (req, res) => {
+    try {
+      const { lineUserId } = req.body || {};
+      const state = store.completeSurvey(lineUserId);
+      return res.json(state);
+    } catch (err) {
+      return res.status(400).json({ error: err.code || 'SURVEY_ERROR', message: err.message });
+    }
+  });
+
   // Confirm reward redemption in front of staff
   router.post('/api/redeem', (req, res) => {
     try {
