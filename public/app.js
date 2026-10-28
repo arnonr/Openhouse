@@ -247,7 +247,7 @@
     lastState = state;
 
     if (state.settings) {
-      els.eventTitle.textContent = state.settings.event_title || 'KMUTNB Techno Park Open House';
+      els.eventTitle.textContent = state.settings.event_title || 'KMUTNB Techno Park Open House 2026';
       els.eventSubtitle.textContent = state.settings.prize_description || 'เดินชมฐานกิจกรรม สแกน QR Code สะสมแสตมป์แลกรับของรางวัล';
     }
 

@@ -70,7 +70,7 @@ const DEFAULT_BOOTHS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  event_title: 'KMUTNB Techno Park Open House',
+  event_title: 'KMUTNB Techno Park Open House 2026',
   event_subtitle: 'อุทยานเทคโนโลยี มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ',
   cooldown_seconds: '60',
   required_stamps: '3',
@@ -181,6 +181,11 @@ function createDb(dbPath = ':memory:') {
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
     insertSetting.run(k, String(v));
   }
+  db.prepare(`
+    UPDATE settings
+    SET value = 'KMUTNB Techno Park Open House 2026'
+    WHERE key = 'event_title' AND value = 'KMUTNB Techno Park Open House'
+  `).run();
 
   function getSettings() {
     const rows = db.prepare('SELECT key, value FROM settings').all();
