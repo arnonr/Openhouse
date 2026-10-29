@@ -135,6 +135,10 @@ test('Serves Student Stamp Rally HTML page at / and Admin/Poster pages', async (
     assert.equal(posterRes.status, 200);
     const posterHtml = await posterRes.text();
     assert.ok(posterHtml.includes('OPEN HOUSE STAMP RALLY'));
+    assert.ok(posterHtml.includes('(KMUTNB TECHNO PARK)'));
+    assert.ok(posterHtml.includes('2. รับตราประทับเข้าบัตรสะสมแสตมป์ทันที (ไม่ต้องกรอกฟอร์มตอนเริ่ม)'));
+    assert.ok(posterHtml.includes('3. เมื่อแสตมป์ครบ'));
+    assert.ok(posterHtml.includes('กรอกข้อมูลแล้วแสดงหน้าจอเพื่อรับของรางวัลได้ที่จุดลงทะเบียน'));
   } finally {
     server.close();
   }
