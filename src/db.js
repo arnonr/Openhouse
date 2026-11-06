@@ -264,11 +264,13 @@ function createDb(dbPath = ':memory:') {
     return info.changes > 0;
   }
 
-  function ensureParticipant({ lineUserId, displayName = 'ผู้เข้าร่วมงาน', pictureUrl = '' }) {
+  function ensureParticipant({ lineUserId, displayName = '', pictureUrl = '' }) {
     if (!lineUserId || !String(lineUserId).trim()) {
       throw createError('INVALID_USER', 'ไม่พบรหัสผู้ใช้งาน LINE');
     }
     const uid = String(lineUserId).trim();
+    const cleanName = String(displayName || '').trim();
+    const cleanPic = String(pictureUrl || '').trim();
     const existing = db.prepare('SELECT * FROM participants WHERE line_user_id = ?').get(uid);
     const nowIso = new Date().toISOString();
 
@@ -276,15 +278,16 @@ function createDb(dbPath = ':memory:') {
       db.prepare(`
         INSERT INTO participants (line_user_id, display_name, picture_url, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid, String(displayName || 'ผู้เข้าร่วมงาน').trim(), String(pictureUrl || ''), nowIso, nowIso);
-    } else if (displayName || pictureUrl) {
+      `).run(uid, cleanName || 'ผู้เข้าร่วมงาน', cleanPic, nowIso, nowIso);
+    } else if ((cleanName && cleanName !== 'ผู้เข้าร่วมงาน') || cleanPic) {
+      const nameToUpdate = cleanName && cleanName !== 'ผู้เข้าร่วมงาน' ? cleanName : '';
       db.prepare(`
         UPDATE participants
         SET display_name = COALESCE(NULLIF(?, ''), display_name),
             picture_url = COALESCE(NULLIF(?, ''), picture_url),
             updated_at = ?
         WHERE line_user_id = ?
-      `).run(String(displayName || '').trim(), String(pictureUrl || ''), nowIso, uid);
+      `).run(nameToUpdate, cleanPic, nowIso, uid);
     }
     return db.prepare('SELECT * FROM participants WHERE line_user_id = ?').get(uid);
   }

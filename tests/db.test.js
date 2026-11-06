@@ -61,10 +61,12 @@ test('scans booths, handles idempotent repeat scans, enforces cooldown, and comp
   store.saveProfile({ lineUserId: 'U001', gradeLevel: 'ม.ปลาย', schoolName: 'รร.เตรียมวิศวฯ, มจพ.' });
   const redeemed = store.redeemReward('U001');
   assert.equal(redeemed.participant.is_redeemed, 1);
+  assert.equal(redeemed.participant.display_name, 'น้องสมชาย');
 
-  // CSV export includes UTF-8 BOM and escaped school name
+  // CSV export includes UTF-8 BOM, real student display_name, and escaped school name
   const csv = store.exportCsv();
   assert.ok(csv.startsWith('\uFEFF'));
+  assert.ok(csv.includes('น้องสมชาย'));
   assert.ok(csv.includes('"รร.เตรียมวิศวฯ, มจพ."'));
 });
 

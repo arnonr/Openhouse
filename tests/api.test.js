@@ -210,6 +210,206 @@ test('Supports Nginx Proxy Manager Custom Location subpath /openhouse', async ()
   }
 });
 
+test('Enforces LINE app + LINE OA (@096ilctj) friendship gate before collecting stamps and preserves pending booth', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..');
+  const indexHtml = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+  const appJs = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
+
+  // Gate modal elements exist in index.html
+  assert.ok(indexHtml.includes('id="lineGateModal"'));
+  assert.ok(indexHtml.includes('id="gateExternalView"'));
+  assert.ok(indexHtml.includes('id="gateFriendshipView"'));
+  assert.ok(indexHtml.includes('id="gateOpenLineAppBtn"'));
+  assert.ok(indexHtml.includes('id="gateAddFriendBtn"'));
+  assert.ok(indexHtml.includes('id="gateRecheckFriendBtn"'));
+
+  // app.js enforces isInClient(), getFriendship(), pending booth persistence, and no silent demo fallback when liffId is set
+  assert.ok(appJs.includes('openhouse_pending_booth'));
+  assert.ok(appJs.includes('window.liff.isInClient()'));
+  assert.ok(appJs.includes('window.liff.getFriendship()'));
+  assert.ok(appJs.includes('https://line.me/R/app/'));
+  assert.ok(appJs.includes('getDecodedIDToken'));
+});
+
+test('Behavioral: blocks external browser, gates on LINE OA friendship, and auto-scans pending booth once added', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const vm = require('node:vm');
+  const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+  function createDomStub(search = '?booth=ST-02', liffMock = null) {
+    const elements = new Map();
+    const storage = new Map();
+    const apiCalls = [];
+
+    function getEl(id) {
+      if (!elements.has(id)) {
+        const listeners = {};
+        const classes = new Set();
+        elements.set(id, {
+          id,
+          textContent: '',
+          innerHTML: '',
+          value: '',
+          href: '',
+          src: '',
+          style: {},
+          className: '',
+          classList: {
+            add: (c) => classes.add(c),
+            remove: (c) => classes.delete(c),
+            contains: (c) => classes.has(c)
+          },
+          addEventListener: (ev, fn) => {
+            listeners[ev] = fn;
+          },
+          trigger: async (ev, arg) => {
+            if (listeners[ev]) await listeners[ev](arg);
+          },
+          querySelectorAll: () => [],
+          appendChild: () => {},
+          getAttribute: () => null,
+          setAttribute: () => {},
+          removeAttribute: () => {},
+          focus: () => {}
+        });
+      }
+      return elements.get(id);
+    }
+
+    const sandbox = {
+      URL,
+      URLSearchParams,
+      setTimeout: () => 1,
+      clearTimeout: () => {},
+      setInterval: () => 1,
+      navigator: {},
+      localStorage: {
+        getItem: (k) => (storage.has(k) ? storage.get(k) : null),
+        setItem: (k, v) => storage.set(k, String(v)),
+        removeItem: (k) => storage.delete(k)
+      },
+      fetch: async (url, opts = {}) => {
+        apiCalls.push({ url, opts });
+        if (url.endsWith('/api/config')) {
+          return {
+            ok: true,
+            json: async () => ({
+              liffId: '2012153981-eWRVDFrg',
+              lineOaId: '@096ilctj',
+              demoMode: false,
+              settings: { required_stamps: 3 }
+            })
+          };
+        }
+        if (url.includes('/api/me')) {
+          return {
+            ok: true,
+            json: async () => ({
+              participant: { line_user_id: 'U123', display_name: 'น้องนนท์' },
+              booths: [],
+              stampedCount: 0,
+              requiredStamps: 3,
+              totalBooths: 9,
+              isCompleted: false
+            })
+          };
+        }
+        if (url.endsWith('/api/scan')) {
+          return {
+            ok: true,
+            json: async () => ({
+              alreadyStamped: false,
+              booth: { code: 'ST-02', name: 'ฐานหุ่นยนต์', icon: '🤖' },
+              state: {
+                participant: { line_user_id: 'U123', display_name: 'น้องนนท์' },
+                booths: [],
+                stampedCount: 1,
+                requiredStamps: 3,
+                totalBooths: 9,
+                isCompleted: false
+              }
+            })
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      },
+      document: {
+        getElementById: (id) => getEl(id),
+        querySelector: () => null,
+        createElement: () => getEl(`dyn-${Math.random()}`),
+        visibilityState: 'visible',
+        addEventListener: () => {}
+      },
+      window: null
+    };
+
+    sandbox.window = {
+      location: { pathname: '/openhouse/', search, href: `https://it.technopark.kmutnb.ac.th/openhouse/${search}` },
+      history: { replaceState: () => {} },
+      addEventListener: () => {},
+      liff: liffMock
+    };
+
+    return { sandbox, getEl, storage, apiCalls };
+  }
+
+  // Case 1: External browser (isInClient() === false) -> blocked by external gate, preserves ?booth=ST-02
+  {
+    const { sandbox, getEl, storage, apiCalls } = createDomStub('?booth=ST-02', {
+      init: async () => {},
+      isInClient: () => false,
+      isLoggedIn: () => false
+    });
+    vm.runInNewContext(appJs, sandbox);
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    assert.equal(getEl('lineGateModal').classList.contains('open'), true);
+    assert.equal(getEl('gateExternalView').style.display, 'block');
+    assert.equal(getEl('gateOpenLineAppBtn').href, 'https://line.me/R/app/2012153981-eWRVDFrg?booth=ST-02');
+    assert.equal(storage.get('openhouse_pending_booth'), 'ST-02');
+    assert.equal(apiCalls.some((c) => c.url.includes('/api/scan')), false);
+  }
+
+  // Case 2: In LINE App, not friend yet -> blocked by friendship gate; then adds friend and rechecks -> scans ST-02
+  {
+    let friendState = false;
+    const { sandbox, getEl, apiCalls } = createDomStub('?booth=ST-02', {
+      init: async () => {},
+      isInClient: () => true,
+      isLoggedIn: () => true,
+      getProfile: async () => ({ userId: 'U123', displayName: '', pictureUrl: '' }),
+      getDecodedIDToken: () => ({ sub: 'U123', name: 'น้องนนท์ IDToken' }),
+      getFriendship: async () => ({ friendFlag: friendState })
+    });
+    vm.runInNewContext(appJs, sandbox);
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    assert.equal(getEl('lineGateModal').classList.contains('open'), true);
+    assert.equal(getEl('gateFriendshipView').style.display, 'block');
+    assert.equal(apiCalls.some((c) => c.url.includes('/api/scan')), false);
+
+    // Student adds LINE OA (@096ilctj) and taps recheck button
+    friendState = true;
+    await getEl('gateRecheckFriendBtn').trigger('click');
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    assert.equal(getEl('lineGateModal').classList.contains('open'), false);
+    const scanCall = apiCalls.find((c) => c.url.endsWith('/api/scan'));
+    assert.ok(scanCall, 'Expected /api/scan to be called automatically after friendship confirmed');
+    const scanBody = JSON.parse(scanCall.opts.body);
+    assert.equal(scanBody.boothCode, 'ST-02');
+    assert.equal(scanBody.lineUserId, 'U123');
+    assert.equal(scanBody.displayName, 'น้องนนท์ IDToken');
+  }
+});
+
+
 
 
 

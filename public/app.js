@@ -69,7 +69,15 @@
     closeScanPopupBtn: document.getElementById('closeScanPopupBtn'),
     redeemConfirmModal: document.getElementById('redeemConfirmModal'),
     cancelRedeemModalBtn: document.getElementById('cancelRedeemModalBtn'),
-    proceedRedeemModalBtn: document.getElementById('proceedRedeemModalBtn')
+    proceedRedeemModalBtn: document.getElementById('proceedRedeemModalBtn'),
+    lineGateModal: document.getElementById('lineGateModal'),
+    gateExternalView: document.getElementById('gateExternalView'),
+    gateFriendshipView: document.getElementById('gateFriendshipView'),
+    gateExternalAddFriendBtn: document.getElementById('gateExternalAddFriendBtn'),
+    gateOpenLineAppBtn: document.getElementById('gateOpenLineAppBtn'),
+    gateAddFriendBtn: document.getElementById('gateAddFriendBtn'),
+    gateRecheckFriendBtn: document.getElementById('gateRecheckFriendBtn'),
+    gateStatusMsg: document.getElementById('gateStatusMsg')
   };
 
   function escapeHtml(str) {
@@ -118,39 +126,170 @@
     return demoUser;
   }
 
+  function extractBoothFromCurrentUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const liffStateParams = new URLSearchParams(urlParams.get('liff.state') || '');
+    return (urlParams.get('booth') || liffStateParams.get('booth') || '').trim();
+  }
+
+  function savePendingBoothFromUrl() {
+    const booth = extractBoothFromCurrentUrl();
+    if (booth) {
+      try {
+        localStorage.setItem('openhouse_pending_booth', booth);
+      } catch (_e) {}
+    }
+    return booth;
+  }
+
+  function getPendingBooth() {
+    const fromUrl = extractBoothFromCurrentUrl();
+    if (fromUrl) return fromUrl;
+    try {
+      return (localStorage.getItem('openhouse_pending_booth') || '').trim();
+    } catch (_e) {
+      return '';
+    }
+  }
+
+  function consumePendingBooth() {
+    const booth = getPendingBooth();
+    try {
+      localStorage.removeItem('openhouse_pending_booth');
+    } catch (_e) {}
+    return booth;
+  }
+
+  function showLineGateModal(mode, { lineOaUrl = 'https://line.me/R/ti/p/@096ilctj', lineAppUrl = '' } = {}) {
+    if (!els.lineGateModal) return;
+    if (els.gateExternalAddFriendBtn) {
+      els.gateExternalAddFriendBtn.href = lineOaUrl;
+    }
+    if (els.gateAddFriendBtn) {
+      els.gateAddFriendBtn.href = lineOaUrl;
+    }
+    if (els.gateOpenLineAppBtn && lineAppUrl) {
+      els.gateOpenLineAppBtn.href = lineAppUrl;
+    }
+    if (mode === 'external') {
+      if (els.gateExternalView) els.gateExternalView.style.display = 'block';
+      if (els.gateFriendshipView) els.gateFriendshipView.style.display = 'none';
+    } else {
+      if (els.gateExternalView) els.gateExternalView.style.display = 'none';
+      if (els.gateFriendshipView) els.gateFriendshipView.style.display = 'block';
+    }
+    els.lineGateModal.classList.add('open');
+  }
+
+  function hideLineGateModal() {
+    if (els.lineGateModal) {
+      els.lineGateModal.classList.remove('open');
+    }
+  }
+
+  async function verifyLineFriendship() {
+    if (!window.liff || typeof window.liff.getFriendship !== 'function') {
+      try {
+        return localStorage.getItem('openhouse_oa_added_fallback') === '1';
+      } catch (_e) {
+        return false;
+      }
+    }
+    try {
+      const friendship = await window.liff.getFriendship();
+      return Boolean(friendship && friendship.friendFlag === true);
+    } catch (_err) {
+      try {
+        return localStorage.getItem('openhouse_oa_added_fallback') === '1';
+      } catch (_e) {
+        return false;
+      }
+    }
+  }
+
   async function initIdentity() {
+    savePendingBoothFromUrl();
+
     const cfgRes = await fetch(`${BASE_PATH}/api/config`);
     appConfig = await cfgRes.json();
 
-    if (appConfig.lineOaId) {
-      const cleanOa = appConfig.lineOaId.startsWith('@') ? appConfig.lineOaId : `@${appConfig.lineOaId}`;
-      els.lineOaLink.href = `https://line.me/R/ti/p/${cleanOa}`;
+    const cleanOa = appConfig.lineOaId
+      ? (appConfig.lineOaId.startsWith('@') ? appConfig.lineOaId : `@${appConfig.lineOaId}`)
+      : '@096ilctj';
+    const lineOaUrl = `https://line.me/R/ti/p/${cleanOa}`;
+    if (els.lineOaLink) {
+      els.lineOaLink.href = lineOaUrl;
     }
+
+    const pendingBooth = getPendingBooth();
+    const lineAppUrl = appConfig.liffId
+      ? `https://line.me/R/app/${appConfig.liffId}${pendingBooth ? `?booth=${encodeURIComponent(pendingBooth)}` : ''}`
+      : lineOaUrl;
 
     const urlParams = new URLSearchParams(window.location.search);
     const forceDemo = urlParams.get('demo') === '1';
 
-    if (appConfig.liffId && !forceDemo && window.liff) {
-      try {
-        await window.liff.init({ liffId: appConfig.liffId });
-        if (!window.liff.isLoggedIn()) {
-          window.liff.login({ redirectUri: window.location.href });
-          return false;
-        }
-        const profile = await window.liff.getProfile();
-        currentUser = {
-          lineUserId: profile.userId,
-          displayName: profile.displayName || 'ผู้เข้าร่วมงาน',
-          pictureUrl: profile.pictureUrl || ''
-        };
-        return true;
-      } catch (err) {
-        console.warn('LIFF init fallback to demo user:', err);
-      }
+    if (!appConfig.liffId || forceDemo) {
+      currentUser = getOrCreateDemoUser(false);
+      els.demoToolbar.style.display = 'block';
+      return true;
     }
 
-    currentUser = getOrCreateDemoUser(false);
-    els.demoToolbar.style.display = 'block';
+    // Strict Production Mode: Require opening inside LINE App and adding LINE OA (@096ilctj)
+    if (!window.liff) {
+      showLineGateModal('external', { lineOaUrl, lineAppUrl });
+      return false;
+    }
+
+    try {
+      await window.liff.init({ liffId: appConfig.liffId });
+    } catch (err) {
+      console.warn('LIFF init failed:', err);
+      showLineGateModal('external', { lineOaUrl, lineAppUrl });
+      return false;
+    }
+
+    if (!window.liff.isInClient()) {
+      showLineGateModal('external', { lineOaUrl, lineAppUrl });
+      return false;
+    }
+
+    if (!window.liff.isLoggedIn()) {
+      window.liff.login({ redirectUri: window.location.href });
+      return false;
+    }
+
+    let profile = {};
+    try {
+      profile = (await window.liff.getProfile()) || {};
+    } catch (_err) {}
+
+    let idToken = {};
+    try {
+      if (typeof window.liff.getDecodedIDToken === 'function') {
+        idToken = window.liff.getDecodedIDToken() || {};
+      }
+    } catch (_err) {}
+
+    const userId = profile.userId || idToken.sub || '';
+    if (!userId) {
+      showLineGateModal('external', { lineOaUrl, lineAppUrl });
+      return false;
+    }
+
+    currentUser = {
+      lineUserId: userId,
+      displayName: profile.displayName || idToken.name || 'ผู้เข้าร่วมงาน',
+      pictureUrl: profile.pictureUrl || idToken.picture || ''
+    };
+
+    const isFriend = await verifyLineFriendship();
+    if (!isFriend) {
+      showLineGateModal('friendship', { lineOaUrl, lineAppUrl });
+      return false;
+    }
+
+    hideLineGateModal();
     return true;
   }
 
@@ -712,6 +851,10 @@
   }
 
   els.openScannerBtn.addEventListener('click', async () => {
+    if (!currentUser.lineUserId || (els.lineGateModal && els.lineGateModal.classList.contains('open'))) {
+      if (els.lineGateModal) els.lineGateModal.classList.add('open');
+      return;
+    }
     els.scannerModal.classList.add('open');
     if (els.qrReaderFallbackBox) {
       els.qrReaderFallbackBox.style.display = 'none';
@@ -881,22 +1024,81 @@
     await loadMyState();
   });
 
+  let bootCompleted = false;
+  let isCheckingFriendship = false;
+
+  async function completeBootAfterIdentity() {
+    if (bootCompleted || !currentUser.lineUserId) return;
+    bootCompleted = true;
+    hideLineGateModal();
+
+    await loadMyState();
+
+    // Check if URL or saved pending booth has ?booth=CODE from scanning a physical booth QR code
+    const boothParam = consumePendingBooth();
+    if (boothParam) {
+      await performScan(boothParam);
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+
+  async function recheckFriendshipAndContinue(showNotYetMsg = true) {
+    if (isCheckingFriendship || bootCompleted || !currentUser.lineUserId) return;
+    isCheckingFriendship = true;
+    try {
+      if (els.gateStatusMsg && showNotYetMsg) {
+        els.gateStatusMsg.style.display = 'block';
+        els.gateStatusMsg.style.background = '#eff6ff';
+        els.gateStatusMsg.style.color = '#1e40af';
+        els.gateStatusMsg.textContent = '⏳ กำลังตรวจสอบสถานะการเพิ่มเพื่อน LINE OA...';
+      }
+      const isFriend = await verifyLineFriendship();
+      if (isFriend) {
+        showToast('🎉 ขอบคุณที่เพิ่มเพื่อน LINE OA! เริ่มสะสมแสตมป์ได้เลยครับ', 'success');
+        await completeBootAfterIdentity();
+      } else if (showNotYetMsg && els.gateStatusMsg) {
+        els.gateStatusMsg.style.display = 'block';
+        els.gateStatusMsg.style.background = '#fef2f2';
+        els.gateStatusMsg.style.color = '#b91c1c';
+        els.gateStatusMsg.textContent = '⚠️ ระบบยังตรวจไม่พบการเป็นเพื่อน กรุณากดปุ่มสีเขียว "+ 1. กดเพิ่มเพื่อน LINE OA" ด้านบนก่อนนะครับ';
+      }
+    } finally {
+      isCheckingFriendship = false;
+    }
+  }
+
+  if (els.gateAddFriendBtn) {
+    els.gateAddFriendBtn.addEventListener('click', () => {
+      try {
+        localStorage.setItem('openhouse_oa_added_fallback', '1');
+      } catch (_e) {}
+    });
+  }
+
+  if (els.gateRecheckFriendBtn) {
+    els.gateRecheckFriendBtn.addEventListener('click', () => {
+      recheckFriendshipAndContinue(true);
+    });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !bootCompleted && currentUser.lineUserId) {
+      recheckFriendshipAndContinue(false);
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    if (!bootCompleted && currentUser.lineUserId) {
+      recheckFriendshipAndContinue(false);
+    }
+  });
+
   // Boot
   (async function start() {
     const ready = await initIdentity();
     if (!ready) return;
 
-    await loadMyState();
-
-    // Check if URL has ?booth=CODE or ?liff.state=%3Fbooth%3DCODE from scanning a physical booth QR code
-    const urlParams = new URLSearchParams(window.location.search);
-    const liffStateParams = new URLSearchParams(urlParams.get('liff.state') || '');
-    const boothParam = urlParams.get('booth') || liffStateParams.get('booth');
-    if (boothParam) {
-      await performScan(boothParam);
-      // Clean URL query parameter without reloading
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
+    await completeBootAfterIdentity();
   })();
 })();
